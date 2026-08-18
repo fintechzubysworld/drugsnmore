@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Users · Drugs n' More</title><link rel="stylesheet" href="common.css" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" /></head>
+<body>
+    <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
+    <aside class="sidebar" id="sidebar"><!-- sidebar with users active --></aside>
+    <div class="main">
+        <header class="header"><!-- header --></header>
+        <div class="content">
+            <div class="page-header"><h2>Users</h2><div class="actions"><button class="btn btn-primary" id="newUserBtn"><i class="fas fa-plus"></i> Add User</button></div></div>
+            <div class="card"><div class="table-wrap"><table><thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody id="usersTable"><tr><td colspan="4" style="text-align:center;color:var(--text-light)">No users</td></tr></tbody></table></div></div>
+        </div>
+    </div>
+    <!-- login overlay -->
+    <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;"><!-- same login box --></div>
+    <!-- modal for add user -->
+    <div class="modal-overlay" id="modalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999;">
+        <div class="modal" style="background:#fff;border-radius:14px;max-width:640px;width:94%;max-height:90vh;overflow-y:auto;padding:28px 32px;">
+            <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h3>Add User</h3><button class="close" id="modalClose" style="background:none;font-size:1.4rem;color:var(--text-light);">&times;</button></div>
+            <div id="modalBody">
+                <div class="form-group"><label>Email</label><input id="newUserEmail" placeholder="user@example.com" /></div>
+                <div class="form-group"><label>Password</label><input id="newUserPass" type="password" placeholder="••••••••" /></div>
+                <div class="form-group"><label>Role</label><select id="newUserRole"><option value="user">User</option><option value="admin">Admin</option></select></div>
+                <button class="btn btn-primary" id="saveUserBtn"><i class="fas fa-user-plus"></i> Create User</button>
+            </div>
+        </div>
+    </div>
+    <script src="common.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            initAuth(loadUsers);
+            attachLoginHandlers();
+            // modal logic
+            const modal = document.getElementById('modalOverlay');
+            document.getElementById('newUserBtn').addEventListener('click', () => modal.style.display = 'flex');
+            document.getElementById('modalClose').addEventListener('click', () => modal.style.display = 'none');
+            modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+            document.getElementById('saveUserBtn').addEventListener('click', async () => {
+                const email = document.getElementById('newUserEmail').value.trim();
+                const pass = document.getElementById('newUserPass').value;
+                const role = document.getElementById('newUserRole').value;
+                if (!email || !pass) { showToast('Please fill in all fields', 'error'); return; }
+                try {
+                    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+                    await db.collection('users').doc(cred.user.uid).set({ email, role, displayName: email, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                    showToast('User created!');
+                    modal.style.display = 'none';
+                    loadUsers();
+                } catch(e) { showToast(e.message, 'error'); }
+            });
+
+            async function loadUsers() {
+                try {
+                    const snap = await db.collection('users').get();
+                    const tbody = document.getElementById('usersTable');
+                    if (snap.empty) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No users</td></tr>'; return; }
+                    let html = '';
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        const role = d.role || 'user';
+                        const isSuper = role === 'superadmin';
+                        const isAdmin = role === 'admin';
+                        html += `<tr><td>${d.email||'—'}</td><td>${isSuper?'<span class="super-badge">Super Admin</span>':isAdmin?'<span class="admin-badge">Admin</span>':'<span class="chip">User</span>'}</td><td><span class="badge badge-success">active</span></td><td>${currentUserRole==='superadmin'&&!isSuper?`<button class="btn btn-sm btn-danger" onclick="deleteUser('${doc.id}')"><i class="fas fa-trash"></i></button>`:'—'}</td></tr>`;
+                    });
+                    tbody.innerHTML = html;
+                    // define deleteUser globally
+                    window.deleteUser = async (id) => {
+                        if (!confirm('Delete this user?')) return;
+                        try { await db.collection('users').doc(id).delete(); showToast('User deleted'); loadUsers(); } catch(e) { showToast(e.message, 'error'); }
+                    };
+                } catch(e) { console.warn(e); }
+            }
+        });
+    </script>
+</body>
+</html>
