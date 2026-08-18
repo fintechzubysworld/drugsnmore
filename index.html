@@ -1,0 +1,2557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drugs n' More — Supply Chain</title>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js">
+    </script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+
+    <style>
+        /* ───────────── RESET & ROOT ───────────── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --primary: #0b6e4f;
+            --primary-light: #1a8a6a;
+            --primary-dark: #064d37;
+            --accent: #f39c12;
+            --danger: #e74c3c;
+            --bg: #f4f7fa;
+            --card: #ffffff;
+            --text: #1e2a3a;
+            --text-light: #5a6f8a;
+            --shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+            --radius: 14px;
+            --transition: 0.25s ease;
+            --sidebar-width: 250px;
+            --header-height: 64px;
+        }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+        button {
+            cursor: pointer;
+            border: none;
+            outline: none;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        input,
+        select,
+        textarea {
+            font-family: inherit;
+            font-size: 0.9rem;
+            border: 1px solid #dde2e9;
+            border-radius: 8px;
+            padding: 10px 14px;
+            width: 100%;
+            background: #fff;
+            transition: var(--transition);
+        }
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(11, 110, 79, 0.15);
+            outline: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        th,
+        td {
+            padding: 12px 14px;
+            text-align: left;
+            border-bottom: 1px solid #eef1f5;
+        }
+        th {
+            background: #f8fafc;
+            color: var(--text-light);
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        /* ───────────── SIDEBAR ───────────── */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: #ffffff;
+            border-right: 1px solid #e9ecf0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+            padding: 20px 16px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--primary);
+            padding-bottom: 24px;
+            border-bottom: 1px solid #eef1f5;
+            margin-bottom: 20px;
+        }
+        .sidebar-brand i {
+            font-size: 1.8rem;
+        }
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+        }
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            color: var(--text-light);
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+        .sidebar-nav a i {
+            width: 22px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        .sidebar-nav a:hover {
+            background: #f0f4f9;
+            color: var(--text);
+        }
+        .sidebar-nav a.active {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(11, 110, 79, 0.25);
+        }
+        .sidebar-nav .nav-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #aab3c5;
+            padding: 16px 14px 6px;
+            font-weight: 600;
+        }
+        .sidebar-footer {
+            border-top: 1px solid #eef1f5;
+            padding-top: 16px;
+            margin-top: 8px;
+        }
+        .sidebar-footer a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            color: var(--text-light);
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+        .sidebar-footer a:hover {
+            background: #f0f4f9;
+            color: var(--text);
+        }
+        .sidebar-footer a i {
+            width: 22px;
+            text-align: center;
+        }
+
+        /* ───────────── MAIN ───────────── */
+        .main {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            height: var(--header-height);
+            background: #fff;
+            border-bottom: 1px solid #e9ecf0;
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .header-left .menu-toggle {
+            display: none;
+            background: none;
+            font-size: 1.4rem;
+            color: var(--text);
+        }
+        .header-left h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+        .header-right .notif-btn {
+            background: none;
+            font-size: 1.2rem;
+            color: var(--text-light);
+            position: relative;
+        }
+        .header-right .notif-btn .dot {
+            width: 8px;
+            height: 8px;
+            background: var(--danger);
+            border-radius: 50%;
+            position: absolute;
+            top: -2px;
+            right: -4px;
+        }
+        .header-right .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f0f4f9;
+            padding: 6px 14px 6px 10px;
+            border-radius: 30px;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+        .header-right .user-badge i {
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+
+        .content {
+            padding: 28px 32px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* ───────────── PAGE SECTIONS ───────────── */
+        .page {
+            display: none;
+            animation: fadeUp 0.3s ease;
+        }
+        .page.active {
+            display: block;
+        }
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .page-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .page-header .sub {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: var(--transition);
+            background: #eef1f5;
+            color: var(--text);
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(11, 110, 79, 0.25);
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1.5px solid #dde2e9;
+        }
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .btn-success {
+            background: #28a745;
+            color: #fff;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 0.78rem;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 22px 26px;
+            margin-bottom: 24px;
+        }
+        .card-title {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+        }
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+        .stat-card {
+            background: #fff;
+            border-radius: var(--radius);
+            padding: 18px 20px;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--primary);
+        }
+        .stat-card .num {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+        .stat-card .label {
+            color: var(--text-light);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+            color: var(--text-light);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+        .modal-overlay.open {
+            display: flex;
+        }
+        .modal {
+            background: #fff;
+            border-radius: var(--radius);
+            max-width: 640px;
+            width: 94%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 28px 32px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+            animation: fadeUp 0.25s ease;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-header h3 {
+            font-size: 1.2rem;
+        }
+        .modal-header .close {
+            background: none;
+            font-size: 1.4rem;
+            color: var(--text-light);
+        }
+
+        /* ───────────── RESPONSIVE ───────────── */
+        @media (max-width: 992px) {
+            .grid-3 {
+                grid-template-columns: 1fr 1fr;
+            }
+            .grid-4 {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                transform: translateX(-100%);
+                width: 280px;
+                height: 100vh;
+                z-index: 200;
+                box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .header-left .menu-toggle {
+                display: block;
+            }
+            .content {
+                padding: 20px 16px;
+            }
+            .header {
+                padding: 0 16px;
+            }
+            .grid-2,
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .grid-3,
+            .grid-4 {
+                grid-template-columns: 1fr;
+            }
+            .page-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .header-right .user-badge span {
+                display: none;
+            }
+            .modal {
+                padding: 20px;
+            }
+        }
+        @media (max-width: 480px) {
+            .stat-card .num {
+                font-size: 1.2rem;
+            }
+            .actions .btn {
+                font-size: 0.78rem;
+                padding: 8px 14px;
+            }
+        }
+
+        /* ───────────── SHEET ───────────── */
+        .sheet-table th,
+        .sheet-table td {
+            padding: 8px 10px;
+            font-size: 0.8rem;
+        }
+        .sheet-table input {
+            padding: 6px 8px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+        }
+        .sheet-table .total-row {
+            font-weight: 600;
+            background: #f8fafc;
+        }
+
+        /* ───────────── LOGIN SPECIFIC ───────────── */
+        .login-page {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(145deg, #f4f7fa 0%, #e8edf4 100%);
+        }
+        .login-box {
+            background: #fff;
+            border-radius: var(--radius);
+            padding: 40px 44px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+        }
+        .login-box .brand {
+            text-align: center;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 28px;
+        }
+        .login-box .brand i {
+            font-size: 2.2rem;
+            display: block;
+            margin-bottom: 6px;
+        }
+        .login-box .form-group {
+            margin-bottom: 18px;
+        }
+        .login-box .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        .login-box .alt {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+        .login-box .alt a {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .login-box .default-creds {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 0.8rem;
+            text-align: center;
+            color: var(--text-light);
+            border: 1px dashed #dde2e9;
+        }
+        .login-box .default-creds strong {
+            color: var(--text);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #1e2a3a;
+            color: #fff;
+            padding: 14px 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+            max-width: 400px;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        .toast i {
+            font-size: 1.2rem;
+        }
+        .toast.success i {
+            color: #2ecc71;
+        }
+        .toast.error i {
+            color: #e74c3c;
+        }
+        .toast.warning i {
+            color: #f39c12;
+        }
+
+        /* scroll */
+        .table-wrap {
+            overflow-x: auto;
+        }
+        .chip {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: #eef1f5;
+        }
+
+        /* super admin badge */
+        .super-badge {
+            background: #8e44ad;
+            color: #fff;
+            padding: 2px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .admin-badge {
+            background: var(--primary);
+            color: #fff;
+            padding: 2px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ─── TOAST ─── -->
+    <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
+
+    <!-- ─── SIDEBAR ─── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <i class="fas fa-pills"></i>
+            <span>Drugs n' More</span>
+        </div>
+        <nav class="sidebar-nav" id="sidebarNav">
+            <div class="nav-label">Main</div>
+            <a href="#" data-page="dashboard"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="#" data-page="dispatch"><i class="fas fa-truck"></i> Dispatch</a>
+            <a href="#" data-page="receive"><i class="fas fa-arrow-down"></i> Receive</a>
+            <a href="#" data-page="warehouse"><i class="fas fa-warehouse"></i> Warehouse</a>
+            <a href="#" data-page="pharmacy-shelf"><i class="fas fa-shelves"></i> Pharmacy Shelf</a>
+            <a href="#" data-page="branches"><i class="fas fa-store"></i> Branches</a>
+
+            <div class="nav-label">Supply</div>
+            <a href="#" data-page="suppliers"><i class="fas fa-handshake"></i> Suppliers</a>
+            <a href="#" data-page="request-shipment"><i class="fas fa-paper-plane"></i> Request Shipment</a>
+            <a href="#" data-page="returns"><i class="fas fa-undo"></i> Returns</a>
+
+            <div class="nav-label">Finance</div>
+            <a href="#" data-page="invoice-repo"><i class="fas fa-file-invoice"></i> Invoice Repository</a>
+            <a href="#" data-page="outstanding-invoice"><i class="fas fa-clock"></i> Outstanding (Invoice)</a>
+            <a href="#" data-page="outstanding-shipment"><i class="fas fa-clock"></i> Outstanding (Shipment)</a>
+            <a href="#" data-page="reconciliation"><i class="fas fa-balance-scale"></i> Reconciliation</a>
+            <a href="#" data-page="ledger"><i class="fas fa-book"></i> Ledger</a>
+
+            <div class="nav-label">Admin</div>
+            <a href="#" data-page="users"><i class="fas fa-users"></i> Users</a>
+            <a href="#" data-page="admin"><i class="fas fa-user-shield"></i> Admin</a>
+            <a href="#" data-page="super-admin"><i class="fas fa-crown"></i> Super Admin</a>
+            <a href="#" data-page="system-config"><i class="fas fa-cog"></i> System Config</a>
+
+            <div class="nav-label">Reporting</div>
+            <a href="#" data-page="reports"><i class="fas fa-chart-bar"></i> Reports</a>
+            <a href="#" data-page="data"><i class="fas fa-database"></i> Data</a>
+            <a href="#" data-page="notifications"><i class="fas fa-bell"></i> Notifications</a>
+
+            <div class="nav-label">Other</div>
+            <a href="#" data-page="profile"><i class="fas fa-user-circle"></i> Profile</a>
+            <a href="#" data-page="sheet"><i class="fas fa-table"></i> Sheet</a>
+            <a href="#" data-page="authentication"><i class="fas fa-lock"></i> Authentication</a>
+            <a href="#" data-page="reset"><i class="fas fa-key"></i> Reset</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </aside>
+
+    <!-- ─── MAIN ─── -->
+    <div class="main">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+                <h2 id="pageTitle">Dashboard</h2>
+            </div>
+            <div class="header-right">
+                <button class="notif-btn" id="notifIcon">
+                    <i class="fas fa-bell"></i>
+                    <span class="dot" id="notifDot"></span>
+                </button>
+                <div class="user-badge">
+                    <i class="fas fa-user-circle"></i>
+                    <span id="userDisplay">User</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENT -->
+        <div class="content" id="contentArea">
+
+            <!-- ======================== DASHBOARD ======================== -->
+            <section class="page active" id="page-dashboard">
+                <div class="page-header">
+                    <div><h2>Dashboard</h2><span class="sub">Overview of your supply chain</span></div>
+                    <div class="actions">
+                        <button class="btn btn-primary" onclick="navigateTo('dispatch')"><i class="fas fa-plus"></i> New Dispatch</button>
+                        <button class="btn btn-outline" onclick="navigateTo('reports')"><i class="fas fa-file-alt"></i> Reports</button>
+                    </div>
+                </div>
+                <div class="grid-4" id="statsGrid">
+                    <div class="stat-card"><div class="num" id="statDispatch">0</div><div class="label">Dispatch</div></div>
+                    <div class="stat-card"><div class="num" id="statReceive">0</div><div class="label">Received</div></div>
+                    <div class="stat-card"><div class="num" id="statWarehouse">0</div><div class="label">Warehouse Items</div></div>
+                    <div class="stat-card"><div class="num" id="statOutstanding">0</div><div class="label">Outstanding</div></div>
+                </div>
+                <div class="grid-2">
+                    <div class="card"><div class="card-title"><i class="fas fa-truck" style="color:var(--primary)"></i> Recent Dispatches</div><div class="table-wrap"><table><thead><tr><th>ID</th><th>To</th><th>Status</th><th>Date</th></tr></thead><tbody id="recentDispatchTable"><tr><td colspan="4" style="text-align:center;color:var(--text-light)">No data</td></tr></tbody></table></div></div>
+                    <div class="card"><div class="card-title"><i class="fas fa-arrow-down" style="color:var(--primary)"></i> Recent Receives</div><div class="table-wrap"><table><thead><tr><th>ID</th><th>From</th><th>Status</th><th>Date</th></tr></thead><tbody id="recentReceiveTable"><tr><td colspan="4" style="text-align:center;color:var(--text-light)">No data</td></tr></tbody></table></div></div>
+                </div>
+            </section>
+
+            <!-- ======================== DISPATCH ======================== -->
+            <section class="page" id="page-dispatch">
+                <div class="page-header"><h2>Dispatch</h2><div class="actions"><button class="btn btn-primary" id="newDispatchBtn"><i class="fas fa-plus"></i> New Dispatch</button></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>#</th><th>Destination</th><th>Items</th><th>Status</th><th>Date</th><th>Action</th></tr></thead><tbody id="dispatchTable"><tr><td colspan="6" style="text-align:center;color:var(--text-light)">No dispatches</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== RECEIVE ======================== -->
+            <section class="page" id="page-receive">
+                <div class="page-header"><h2>Receive</h2><div class="actions"><button class="btn btn-primary" id="newReceiveBtn"><i class="fas fa-plus"></i> New Receive</button></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>#</th><th>From</th><th>Items</th><th>Status</th><th>Date</th><th>Action</th></tr></thead><tbody id="receiveTable"><tr><td colspan="6" style="text-align:center;color:var(--text-light)">No receives</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== WAREHOUSE ======================== -->
+            <section class="page" id="page-warehouse">
+                <div class="page-header"><h2>Warehouse</h2><div class="actions"><button class="btn btn-primary" id="newWarehouseItemBtn"><i class="fas fa-plus"></i> Add Item</button></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Code</th><th>Item</th><th>Qty</th><th>Price</th><th>Location</th><th>Action</th></tr></thead><tbody id="warehouseTable"><tr><td colspan="6" style="text-align:center;color:var(--text-light)">No items</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== PHARMACY SHELF ======================== -->
+            <section class="page" id="page-pharmacy-shelf">
+                <div class="page-header"><h2>Pharmacy Shelf</h2><div class="actions"><button class="btn btn-primary" id="newShelfItemBtn"><i class="fas fa-plus"></i> Add Item</button></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Code</th><th>Item</th><th>Qty</th><th>Price</th><th>Shelf</th><th>Action</th></tr></thead><tbody id="shelfTable"><tr><td colspan="6" style="text-align:center;color:var(--text-light)">No items</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== BRANCHES ======================== -->
+            <section class="page" id="page-branches">
+                <div class="page-header"><h2>Branches</h2><div class="actions"><button class="btn btn-primary" id="newBranchBtn"><i class="fas fa-plus"></i> Add Branch</button></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Name</th><th>Location</th><th>Manager</th><th>Status</th><th>Action</th></tr></thead><tbody id="branchesTable"><tr><td colspan="5" style="text-align:center;color:var(--text-light)">No branches</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== SUPPLIERS ======================== -->
+            <section class="page" id="page-suppliers">
+                <div class="page-header"><h2>Suppliers</h2><div class="actions"><button class="btn btn-primary" id="newSupplierBtn"><i class="fas fa-plus"></i> Add Supplier</button></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Name</th><th>Contact</th><th>Email</th><th>Products</th><th>Action</th></tr></thead><tbody id="suppliersTable"><tr><td colspan="5" style="text-align:center;color:var(--text-light)">No suppliers</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== REQUEST SHIPMENT ======================== -->
+            <section class="page" id="page-request-shipment">
+                <div class="page-header"><h2>Request Shipment</h2><div class="actions"><button class="btn btn-primary" id="newRequestBtn"><i class="fas fa-plus"></i> New Request</button></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>#</th><th>From</th><th>To</th><th>Items</th><th>Status</th><th>Date</th></tr></thead><tbody id="requestTable"><tr><td colspan="6" style="text-align:center;color:var(--text-light)">No requests</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== RETURNS ======================== -->
+            <section class="page" id="page-returns">
+                <div class="page-header"><h2>Returns</h2><div class="actions"><button class="btn btn-primary" id="newReturnBtn"><i class="fas fa-plus"></i> New Return</button></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>#</th><th>From</th><th>Items</th><th>Reason</th><th>Status</th><th>Date</th></tr></thead><tbody id="returnsTable"><tr><td colspan="6" style="text-align:center;color:var(--text-light)">No returns</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== INVOICE REPOSITORY ======================== -->
+            <section class="page" id="page-invoice-repo">
+                <div class="page-header"><h2>Invoice Repository</h2><div class="actions"><button class="btn btn-primary" id="newInvoiceBtn"><i class="fas fa-plus"></i> New Invoice</button></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>#</th><th>Supplier</th><th>Amount</th><th>Status</th><th>Date</th><th>Action</th></tr></thead><tbody id="invoiceTable"><tr><td colspan="6" style="text-align:center;color:var(--text-light)">No invoices</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== OUTSTANDING INVOICE ======================== -->
+            <section class="page" id="page-outstanding-invoice">
+                <div class="page-header"><h2>Outstanding Invoices</h2><span class="sub">Unpaid invoices</span></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>#</th><th>Supplier</th><th>Amount</th><th>Due</th><th>Action</th></tr></thead><tbody id="outstandingInvoiceTable"><tr><td colspan="5" style="text-align:center;color:var(--text-light)">No outstanding invoices</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== OUTSTANDING SHIPMENT ======================== -->
+            <section class="page" id="page-outstanding-shipment">
+                <div class="page-header"><h2>Outstanding Shipments</h2><span class="sub">Pending shipments</span></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>#</th><th>From</th><th>To</th><th>Items</th><th>Status</th><th>Action</th></tr></thead><tbody id="outstandingShipmentTable"><tr><td colspan="6" style="text-align:center;color:var(--text-light)">No outstanding shipments</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== RECONCILIATION ======================== -->
+            <section class="page" id="page-reconciliation">
+                <div class="page-header"><h2>Reconciliation</h2><div class="actions"><button class="btn btn-primary" id="reconcileBtn"><i class="fas fa-sync"></i> Run Reconciliation</button></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Difference</th><th>Action</th></tr></thead><tbody id="reconciliationTable"><tr><td colspan="5" style="text-align:center;color:var(--text-light)">No reconciliations</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== LEDGER ======================== -->
+            <section class="page" id="page-ledger">
+                <div class="page-header"><h2>Ledger</h2><div class="actions"><button class="btn btn-outline"><i class="fas fa-download"></i> Export</button></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead><tbody id="ledgerTable"><tr><td colspan="5" style="text-align:center;color:var(--text-light)">No ledger entries</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== USERS ======================== -->
+            <section class="page" id="page-users">
+                <div class="page-header"><h2>Users</h2><div class="actions"><button class="btn btn-primary" id="newUserBtn"><i class="fas fa-plus"></i> Add User</button></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody id="usersTable"><tr><td colspan="4" style="text-align:center;color:var(--text-light)">No users</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== ADMIN ======================== -->
+            <section class="page" id="page-admin">
+                <div class="page-header"><h2>Admin Management</h2><span class="sub">Manage admin users</span></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody id="adminTable"><tr><td colspan="4" style="text-align:center;color:var(--text-light)">No admin users</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== SUPER ADMIN ======================== -->
+            <section class="page" id="page-super-admin">
+                <div class="page-header"><h2>Super Admin</h2><span class="sub">Create &amp; delete admins · extended configurations</span></div>
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-user-plus"></i> Create Admin</div>
+                        <div class="form-group"><label>Email</label><input id="superCreateAdminEmail" placeholder="admin@example.com" /></div>
+                        <div class="form-group"><label>Password</label><input id="superCreateAdminPass" type="password" placeholder="••••••••" /></div>
+                        <button class="btn btn-primary" id="superCreateAdminBtn"><i class="fas fa-user-shield"></i> Create Admin</button>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-user-minus"></i> Delete Admin</div>
+                        <div class="form-group"><label>Admin Email</label><input id="superDeleteAdminEmail" placeholder="admin@example.com" /></div>
+                        <button class="btn btn-danger" id="superDeleteAdminBtn"><i class="fas fa-trash"></i> Delete Admin</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-cogs"></i> Extended Configurations</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>System Name</label><input id="configSystemName" value="Drugs n' More" /></div>
+                        <div class="form-group"><label>Currency</label><input id="configCurrency" value="USD" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Default Tax (%)</label><input id="configTax" type="number" value="7.5" /></div>
+                        <div class="form-group"><label>Default Discount (%)</label><input id="configDiscount" type="number" value="0" /></div>
+                    </div>
+                    <button class="btn btn-primary" id="saveConfigBtn"><i class="fas fa-save"></i> Save Config</button>
+                </div>
+            </section>
+
+            <!-- ======================== SYSTEM CONFIG ======================== -->
+            <section class="page" id="page-system-config">
+                <div class="page-header"><h2>System Configurations</h2><span class="sub">Requires Super Admin authentication</span></div>
+                <div class="card">
+                    <div class="form-group"><label>Super Admin Password to modify</label><input id="configAuthPass" type="password" placeholder="Enter super admin password" /></div>
+                    <button class="btn btn-primary" id="configAuthBtn"><i class="fas fa-lock-open"></i> Authenticate</button>
+                </div>
+                <div id="configSections" class="hidden">
+                    <div class="grid-2">
+                        <div class="card"><div class="card-title"><i class="fas fa-user-circle"></i> Profile Settings</div><div class="form-group"><label>Display Name</label><input id="cfgProfileName" /></div><div class="form-group"><label>Email</label><input id="cfgProfileEmail" /></div></div>
+                        <div class="card"><div class="card-title"><i class="fas fa-chart-pie"></i> Dashboard Settings</div><div class="form-group"><label>Default View</label><select id="cfgDashboardView"><option value="overview">Overview</option><option value="analytics">Analytics</option></select></div></div>
+                        <div class="card"><div class="card-title"><i class="fas fa-users-cog"></i> User Settings</div><div class="form-group"><label>Default Role</label><select id="cfgDefaultRole"><option value="user">User</option><option value="admin">Admin</option></select></div></div>
+                        <div class="card"><div class="card-title"><i class="fas fa-warehouse"></i> Warehouse Settings</div><div class="form-group"><label>Default Location</label><input id="cfgWarehouseLoc" placeholder="Main Warehouse" /></div></div>
+                        <div class="card"><div class="card-title"><i class="fas fa-shelves"></i> Pharmacy Shelf Settings</div><div class="form-group"><label>Default Shelf</label><input id="cfgShelfDefault" placeholder="A-01" /></div></div>
+                        <div class="card"><div class="card-title"><i class="fas fa-chart-bar"></i> Report Settings</div><div class="form-group"><label>Default Period</label><select id="cfgReportPeriod"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div></div>
+                        <div class="card"><div class="card-title"><i class="fas fa-database"></i> Data Settings</div><div class="form-group"><label>Auto Backup</label><select id="cfgAutoBackup"><option value="on">On</option><option value="off">Off</option></select></div></div>
+                        <div class="card"><div class="card-title"><i class="fas fa-key"></i> Reset Settings</div><div class="form-group"><label>Reset Frequency</label><select id="cfgResetFreq"><option value="never">Never</option><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option></select></div></div>
+                        <div class="card"><div class="card-title"><i class="fas fa-lock"></i> Authentication Settings</div><div class="form-group"><label>2FA Required</label><select id="cfg2FA"><option value="no">No</option><option value="yes">Yes</option></select></div></div>
+                        <div class="card"><div class="card-title"><i class="fas fa-trash-alt"></i> Data Wipe</div><button class="btn btn-danger" id="cfgWipeBtn"><i class="fas fa-exclamation-triangle"></i> Wipe All Data</button></div>
+                    </div>
+                    <button class="btn btn-primary" id="saveAllConfigBtn"><i class="fas fa-save"></i> Save All Settings</button>
+                </div>
+            </section>
+
+            <!-- ======================== REPORTS ======================== -->
+            <section class="page" id="page-reports">
+                <div class="page-header"><h2>Reports</h2><div class="actions"><button class="btn btn-outline"><i class="fas fa-download"></i> Export PDF</button></div></div>
+                <div class="grid-2">
+                    <div class="card"><div class="card-title"><i class="fas fa-boxes"></i> Inventory Report</div><canvas id="reportChart1" height="150"></canvas></div>
+                    <div class="card"><div class="card-title"><i class="fas fa-chart-line"></i> Financial Report</div><canvas id="reportChart2" height="150"></canvas></div>
+                </div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Report</th><th>Generated</th><th>Type</th><th>Action</th></tr></thead><tbody id="reportsTable"><tr><td colspan="4" style="text-align:center;color:var(--text-light)">No reports</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== DATA ======================== -->
+            <section class="page" id="page-data">
+                <div class="page-header"><h2>Data</h2><div class="actions"><button class="btn btn-outline"><i class="fas fa-download"></i> Export</button><button class="btn btn-outline"><i class="fas fa-upload"></i> Import</button></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Collection</th><th>Documents</th><th>Last Updated</th><th>Action</th></tr></thead><tbody id="dataTable"><tr><td colspan="4" style="text-align:center;color:var(--text-light)">No collections</td></tr></tbody></table></div></div>
+            </section>
+
+            <!-- ======================== NOTIFICATIONS ======================== -->
+            <section class="page" id="page-notifications">
+                <div class="page-header"><h2>Notifications</h2><div class="actions"><button class="btn btn-outline" id="markAllReadBtn"><i class="fas fa-check-double"></i> Mark All Read</button></div></div>
+                <div id="notificationsList"></div>
+            </section>
+
+            <!-- ======================== PROFILE ======================== -->
+            <section class="page" id="page-profile">
+                <div class="page-header"><h2>Profile</h2></div>
+                <div class="card">
+                    <div class="form-row">
+                        <div class="form-group"><label>Display Name</label><input id="profileName" /></div>
+                        <div class="form-group"><label>Email</label><input id="profileEmail" disabled /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Role</label><input id="profileRole" disabled /></div>
+                        <div class="form-group"><label>Branch</label><input id="profileBranch" /></div>
+                    </div>
+                    <button class="btn btn-primary" id="updateProfileBtn"><i class="fas fa-save"></i> Update Profile</button>
+                </div>
+            </section>
+
+            <!-- ======================== SHEET ======================== -->
+            <section class="page" id="page-sheet">
+                <div class="page-header"><h2>Sheet</h2><div class="actions"><button class="btn btn-outline" id="sheetSettingsBtn"><i class="fas fa-cog"></i> Sheet Settings</button><button class="btn btn-primary" id="addSheetRowBtn"><i class="fas fa-plus"></i> Add Row</button></div></div>
+                <div class="card">
+                    <div class="table-wrap">
+                        <table class="sheet-table" id="sheetTable">
+                            <thead><tr><th>Code</th><th>Item</th><th>Packing Qty</th><th>Price</th><th>Qty</th><th>Amount</th><th>Discount %</th><th>VAT %</th><th><i class="fas fa-trash"></i></th></tr></thead>
+                            <tbody id="sheetBody">
+                                <tr><td colspan="9" style="text-align:center;color:var(--text-light)">No rows</td></tr>
+                            </tbody>
+                            <tfoot id="sheetFoot" class="total-row"><tr><td colspan="5" style="text-align:right">Totals</td><td id="sheetTotalAmount">0.00</td><td id="sheetTotalDiscount">0.00</td><td id="sheetTotalVat">0.00</td><td></td></tr></tfoot>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======================== AUTHENTICATION ======================== -->
+            <section class="page" id="page-authentication">
+                <div class="page-header"><h2>Authentication</h2><span class="sub">Manage authentication methods</span></div>
+                <div class="card">
+                    <div class="form-group"><label>Current Password</label><input id="authCurrentPass" type="password" placeholder="••••••••" /></div>
+                    <div class="form-group"><label>New Password</label><input id="authNewPass" type="password" placeholder="••••••••" /></div>
+                    <div class="form-group"><label>Confirm New Password</label><input id="authConfirmPass" type="password" placeholder="••••••••" /></div>
+                    <button class="btn btn-primary" id="authChangePassBtn"><i class="fas fa-key"></i> Change Password</button>
+                </div>
+            </section>
+
+            <!-- ======================== RESET ======================== -->
+            <section class="page" id="page-reset">
+                <div class="page-header"><h2>Reset</h2><span class="sub">Password reset &amp; recovery</span></div>
+                <div class="card">
+                    <div class="form-group"><label>Email Address</label><input id="resetEmail" placeholder="your@email.com" /></div>
+                    <button class="btn btn-primary" id="resetPasswordBtn"><i class="fas fa-paper-plane"></i> Send Reset Link</button>
+                </div>
+            </section>
+
+        </div><!-- /content -->
+    </div><!-- /main -->
+
+    <!-- ─── MODAL ─── -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modalContent">
+            <div class="modal-header"><h3 id="modalTitle">Modal</h3><button class="close" id="modalClose">&times;</button></div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- ─── LOGIN PAGE (hidden by default) ─── -->
+    <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
+        <div class="login-box">
+            <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
+            <div class="default-creds">
+                <strong>Default Admin:</strong> admin@drugsnmore.com / admin123
+            </div>
+            <div id="loginError" style="color:var(--danger);font-size:0.85rem;margin-bottom:12px;display:none;"></div>
+            <div class="form-group"><label>Email</label><input id="loginEmail" placeholder="user@example.com" value="admin@drugsnmore.com" /></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" value="admin123" /></div>
+            <button class="btn btn-primary" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+            <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
+            <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
+        </div>
+    </div>
+
+    <script>
+        // ────────────────────────────────────────────────────────────────
+        //  FIREBASE INIT
+        // ────────────────────────────────────────────────────────────────
+        const firebaseConfig = {
+            apiKey: "AIzaSyCA9vHsVV841oZue9McbU14yyZtyDptT3Q",
+            authDomain: "drugs-n--more.firebaseapp.com",
+            projectId: "drugs-n--more",
+            storageBucket: "drugs-n--more.firebasestorage.app",
+            messagingSenderId: "1027965446929",
+            appId: "1:1027965446929:web:eec971b5e458baff813ab0",
+            measurementId: "G-HV3GYSY6CK"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        // ────────────────────────────────────────────────────────────────
+        //  STATE
+        // ────────────────────────────────────────────────────────────────
+        let currentUser = null;
+        let currentUserRole = 'user'; // 'user' | 'admin' | 'superadmin'
+        let currentPage = 'dashboard';
+        let sheetRows = [];
+
+        // ────────────────────────────────────────────────────────────────
+        //  DOM REFS
+        // ────────────────────────────────────────────────────────────────
+        const $ = id => document.getElementById(id);
+        const loginPage = $('loginPage');
+        const sidebar = $('sidebar');
+        const menuToggle = $('menuToggle');
+        const contentArea = $('contentArea');
+        const pageTitle = $('pageTitle');
+        const userDisplay = $('userDisplay');
+        const toast = $('toast');
+        const toastMsg = $('toastMsg');
+        const modalOverlay = $('modalOverlay');
+        const modalBody = $('modalBody');
+        const modalTitle = $('modalTitle');
+        const modalClose = $('modalClose');
+
+        // ────────────────────────────────────────────────────────────────
+        //  TOAST
+        // ────────────────────────────────────────────────────────────────
+        function showToast(msg, type = 'success') {
+            toast.className = 'toast show ' + type;
+            toastMsg.textContent = msg;
+            const icon = toast.querySelector('i');
+            icon.className = type === 'success' ? 'fas fa-check-circle' :
+                type === 'error' ? 'fas fa-exclamation-circle' :
+                'fas fa-info-circle';
+            clearTimeout(toast._hide);
+            toast._hide = setTimeout(() => toast.classList.remove('show'), 4000);
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        //  MODAL
+        // ────────────────────────────────────────────────────────────────
+        function openModal(title, html) {
+            modalTitle.textContent = title;
+            modalBody.innerHTML = html;
+            modalOverlay.classList.add('open');
+        }
+
+        function closeModal() { modalOverlay.classList.remove('open'); }
+        modalClose.addEventListener('click', closeModal);
+        modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+
+        // ────────────────────────────────────────────────────────────────
+        //  NAVIGATION
+        // ────────────────────────────────────────────────────────────────
+        const pageMap = {
+            dashboard: 'Dashboard',
+            dispatch: 'Dispatch',
+            receive: 'Receive',
+            warehouse: 'Warehouse',
+            'pharmacy-shelf': 'Pharmacy Shelf',
+            branches: 'Branches',
+            suppliers: 'Suppliers',
+            'request-shipment': 'Request Shipment',
+            returns: 'Returns',
+            'invoice-repo': 'Invoice Repository',
+            'outstanding-invoice': 'Outstanding Invoices',
+            'outstanding-shipment': 'Outstanding Shipments',
+            reconciliation: 'Reconciliation',
+            ledger: 'Ledger',
+            users: 'Users',
+            admin: 'Admin Management',
+            'super-admin': 'Super Admin',
+            'system-config': 'System Configurations',
+            reports: 'Reports',
+            data: 'Data',
+            notifications: 'Notifications',
+            profile: 'Profile',
+            sheet: 'Sheet',
+            authentication: 'Authentication',
+            reset: 'Reset'
+        };
+
+        function navigateTo(page) {
+            if (!pageMap[page]) return;
+            // hide all pages
+            document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+            const target = $('page-' + page);
+            if (target) target.classList.add('active');
+            // update sidebar
+            document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+            const link = document.querySelector(`.sidebar-nav a[data-page="${page}"]`);
+            if (link) link.classList.add('active');
+            pageTitle.textContent = pageMap[page] || page;
+            currentPage = page;
+            // close sidebar on mobile
+            if (window.innerWidth <= 768) sidebar.classList.remove('open');
+            // refresh data
+            refreshPage(page);
+        }
+
+        // sidebar nav clicks
+        document.querySelectorAll('.sidebar-nav a[data-page]').forEach(a => {
+            a.addEventListener('click', (e) => {
+                e.preventDefault();
+                navigateTo(a.dataset.page);
+            });
+        });
+
+        menuToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+
+        // ────────────────────────────────────────────────────────────────
+        //  SEED ADMIN USER (if none exist)
+        // ────────────────────────────────────────────────────────────────
+        async function seedAdminUser() {
+            try {
+                const usersSnap = await db.collection('users').limit(1).get();
+                if (!usersSnap.empty) return; // users exist, skip
+
+                // Create admin user with email admin@drugsnmore.com and password admin123
+                const adminEmail = 'admin@drugsnmore.com';
+                const adminPass = 'admin123';
+                const cred = await auth.createUserWithEmailAndPassword(adminEmail, adminPass);
+                // Set display name
+                await cred.user.updateProfile({ displayName: 'Admin' });
+                // Store in Firestore with superadmin role
+                await db.collection('users').doc(cred.user.uid).set({
+                    email: adminEmail,
+                    role: 'superadmin',
+                    displayName: 'Admin',
+                    branch: 'Headquarters',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                console.log('✅ Default admin created:', adminEmail);
+                showToast('Default admin created: admin@drugsnmore.com / admin123', 'success');
+                // Sign out so user can login manually
+                await auth.signOut();
+            } catch (e) {
+                // If admin already exists or error, ignore
+                console.warn('Seed admin error:', e.message);
+            }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        //  AUTH
+        // ────────────────────────────────────────────────────────────────
+        function showLogin() {
+            loginPage.style.display = 'flex';
+            document.querySelector('.main').style.display = 'none';
+            sidebar.style.display = 'none';
+        }
+
+        function showApp() {
+            loginPage.style.display = 'none';
+            document.querySelector('.main').style.display = 'flex';
+            sidebar.style.display = 'flex';
+        }
+
+        // Login
+        $('loginBtn').addEventListener('click', async () => {
+            const email = $('loginEmail').value.trim();
+            const pass = $('loginPassword').value;
+            const errEl = $('loginError');
+            errEl.style.display = 'none';
+            if (!email || !pass) { errEl.textContent = 'Please fill in all fields.';
+                errEl.style.display = 'block'; return; }
+            try {
+                await auth.signInWithEmailAndPassword(email, pass);
+            } catch (e) {
+                errEl.textContent = e.message;
+                errEl.style.display = 'block';
+            }
+        });
+
+        $('loginPassword').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('loginBtn').click(); });
+        $('loginEmail').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('loginBtn').click(); });
+
+        $('goToRegister').addEventListener('click', (e) => {
+            e.preventDefault();
+            const email = prompt('Enter email to register:');
+            if (!email) return;
+            const pass = prompt('Enter password:');
+            if (!pass) return;
+            auth.createUserWithEmailAndPassword(email, pass)
+                .then(() => showToast('User registered!'))
+                .catch(e => showToast(e.message, 'error'));
+        });
+
+        $('goToResetPass').addEventListener('click', (e) => {
+            e.preventDefault();
+            const email = prompt('Enter your email to reset password:');
+            if (!email) return;
+            auth.sendPasswordResetEmail(email)
+                .then(() => showToast('Reset link sent!'))
+                .catch(e => showToast(e.message, 'error'));
+        });
+
+        // Logout
+        $('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            auth.signOut();
+        });
+
+        // Auth state
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                userDisplay.textContent = user.displayName || user.email || 'User';
+                showApp();
+                // fetch role from Firestore
+                try {
+                    const doc = await db.collection('users').doc(user.uid).get();
+                    if (doc.exists) {
+                        currentUserRole = doc.data().role || 'user';
+                    } else {
+                        // create user doc if missing
+                        await db.collection('users').doc(user.uid).set({
+                            email: user.email,
+                            role: 'user',
+                            displayName: user.displayName || user.email,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        currentUserRole = 'user';
+                    }
+                } catch (e) {
+                    console.warn('Role fetch error:', e);
+                    currentUserRole = 'user';
+                }
+                // show/hide super admin & admin links
+                const isSuper = currentUserRole === 'superadmin';
+                const isAdmin = currentUserRole === 'admin' || isSuper;
+                document.querySelectorAll('.sidebar-nav a[data-page="super-admin"]').forEach(el => el.style.display =
+                isSuper ? 'flex' : 'none');
+                document.querySelectorAll('.sidebar-nav a[data-page="admin"]').forEach(el => el.style.display = isAdmin ?
+                    'flex' : 'none');
+                document.querySelectorAll('.sidebar-nav a[data-page="system-config"]').forEach(el => el.style.display =
+                    isSuper ? 'flex' : 'none');
+                // load profile
+                loadProfile();
+                // refresh current page
+                refreshPage(currentPage);
+                // load notifications
+                loadNotifications();
+                // update stats
+                updateStats();
+                // show toast
+                showToast('Welcome, ' + (user.displayName || user.email), 'success');
+            } else {
+                currentUser = null;
+                currentUserRole = 'user';
+                showLogin();
+                // Seed admin user if no users exist (runs once)
+                seedAdminUser();
+            }
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  PROFILE
+        // ────────────────────────────────────────────────────────────────
+        async function loadProfile() {
+            if (!currentUser) return;
+            try {
+                const doc = await db.collection('users').doc(currentUser.uid).get();
+                if (doc.exists) {
+                    const d = doc.data();
+                    $('profileName').value = d.displayName || d.email || '';
+                    $('profileEmail').value = d.email || currentUser.email || '';
+                    $('profileRole').value = d.role || 'user';
+                    $('profileBranch').value = d.branch || '';
+                }
+            } catch (e) { console.warn(e); }
+        }
+
+        $('updateProfileBtn').addEventListener('click', async () => {
+            if (!currentUser) return;
+            const name = $('profileName').value.trim();
+            const branch = $('profileBranch').value.trim();
+            try {
+                await db.collection('users').doc(currentUser.uid).update({
+                    displayName: name,
+                    branch: branch,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                if (currentUser.displayName !== name) {
+                    await currentUser.updateProfile({ displayName: name });
+                }
+                showToast('Profile updated!');
+                userDisplay.textContent = name || currentUser.email;
+            } catch (e) { showToast(e.message, 'error'); }
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  REFRESH PAGE DATA
+        // ────────────────────────────────────────────────────────────────
+        function refreshPage(page) {
+            switch (page) {
+                case 'dashboard':
+                    updateStats();
+                    loadRecentDispatches();
+                    loadRecentReceives();
+                    break;
+                case 'dispatch':
+                    loadDispatches();
+                    break;
+                case 'receive':
+                    loadReceives();
+                    break;
+                case 'warehouse':
+                    loadWarehouse();
+                    break;
+                case 'pharmacy-shelf':
+                    loadShelf();
+                    break;
+                case 'branches':
+                    loadBranches();
+                    break;
+                case 'suppliers':
+                    loadSuppliers();
+                    break;
+                case 'request-shipment':
+                    loadRequests();
+                    break;
+                case 'returns':
+                    loadReturns();
+                    break;
+                case 'invoice-repo':
+                    loadInvoices();
+                    break;
+                case 'outstanding-invoice':
+                    loadOutstandingInvoices();
+                    break;
+                case 'outstanding-shipment':
+                    loadOutstandingShipments();
+                    break;
+                case 'reconciliation':
+                    loadReconciliations();
+                    break;
+                case 'ledger':
+                    loadLedger();
+                    break;
+                case 'users':
+                    loadUsers();
+                    break;
+                case 'admin':
+                    loadAdmins();
+                    break;
+                case 'reports':
+                    loadReports();
+                    break;
+                case 'data':
+                    loadDataCollections();
+                    break;
+                case 'notifications':
+                    loadNotifications();
+                    break;
+                case 'sheet':
+                    loadSheet();
+                    break;
+            }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        //  STATS
+        // ────────────────────────────────────────────────────────────────
+        async function updateStats() {
+            try {
+                const [dispatchSnap, receiveSnap, warehouseSnap, outstandingSnap] = await Promise.all([
+                    db.collection('dispatches').get(),
+                    db.collection('receives').get(),
+                    db.collection('warehouse').get(),
+                    db.collection('dispatches').where('status', '==', 'pending').get()
+                ]);
+                $('statDispatch').textContent = dispatchSnap.size;
+                $('statReceive').textContent = receiveSnap.size;
+                $('statWarehouse').textContent = warehouseSnap.size;
+                $('statOutstanding').textContent = outstandingSnap.size;
+            } catch (e) { console.warn(e); }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        //  DISPATCH
+        // ────────────────────────────────────────────────────────────────
+        async function loadDispatches() {
+            try {
+                const snap = await db.collection('dispatches').orderBy('createdAt', 'desc').get();
+                const tbody = $('dispatchTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="6" style="text-align:center;color:var(--text-light)">No dispatches</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html += `<tr><td>${doc.id.slice(0,6)}</td><td>${d.destination||'—'}</td><td>${d.items||0}</td><td><span class="badge ${d.status==='pending'?'badge-warning':d.status==='completed'?'badge-success':'badge-info'}">${d.status||'pending'}</span></td><td>${d.createdAt?.toDate?.()?.toLocaleDateString()||'—'}</td><td><button class="btn btn-sm btn-outline" onclick="viewDispatch('${doc.id}')">View</button></td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        async function loadRecentDispatches() {
+            try {
+                const snap = await db.collection('dispatches').orderBy('createdAt', 'desc').limit(5).get();
+                const tbody = $('recentDispatchTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No data</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html +=
+                        `<tr><td>${doc.id.slice(0,6)}</td><td>${d.destination||'—'}</td><td><span class="badge ${d.status==='pending'?'badge-warning':'badge-success'}">${d.status||'pending'}</span></td><td>${d.createdAt?.toDate?.()?.toLocaleDateString()||'—'}</td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        window.viewDispatch = async (id) => {
+            try {
+                const doc = await db.collection('dispatches').doc(id).get();
+                if (!doc.exists) return showToast('Not found', 'error');
+                const d = doc.data();
+                openModal('Dispatch ' + id.slice(0, 6),
+                    `<p><strong>Destination:</strong> ${d.destination||'—'}</p><p><strong>Items:</strong> ${d.items||0}</p><p><strong>Status:</strong> ${d.status||'pending'}</p><p><strong>Date:</strong> ${d.createdAt?.toDate?.()?.toLocaleString()||'—'}</p>`);
+            } catch (e) { showToast(e.message, 'error'); }
+        };
+
+        $('newDispatchBtn').addEventListener('click', () => {
+            openModal('New Dispatch', `
+            <div class="form-group"><label>Destination</label><input id="dispatchDest" placeholder="Branch name" /></div>
+            <div class="form-group"><label>Items (comma separated)</label><input id="dispatchItems" placeholder="Item1, Item2" /></div>
+            <div class="form-group"><label>Notes</label><textarea id="dispatchNotes" rows="2"></textarea></div>
+            <button class="btn btn-primary" id="saveDispatchBtn"><i class="fas fa-truck"></i> Create Dispatch</button>
+          `);
+            $('saveDispatchBtn').addEventListener('click', async () => {
+                const dest = $('dispatchDest').value.trim();
+                const items = $('dispatchItems').value.trim();
+                const notes = $('dispatchNotes').value.trim();
+                if (!dest || !items) { showToast('Please fill in destination and items', 'error'); return; }
+                try {
+                    await db.collection('dispatches').add({
+                        destination: dest,
+                        items: items.split(',').map(s => s.trim()),
+                        status: 'pending',
+                        notes: notes,
+                        createdBy: currentUser?.uid || 'system',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    showToast('Dispatch created!');
+                    closeModal();
+                    loadDispatches();
+                    updateStats();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  RECEIVE
+        // ────────────────────────────────────────────────────────────────
+        async function loadReceives() {
+            try {
+                const snap = await db.collection('receives').orderBy('createdAt', 'desc').get();
+                const tbody = $('receiveTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="6" style="text-align:center;color:var(--text-light)">No receives</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html += `<tr><td>${doc.id.slice(0,6)}</td><td>${d.from||'—'}</td><td>${d.items||0}</td><td><span class="badge ${d.status==='pending'?'badge-warning':'badge-success'}">${d.status||'pending'}</span></td><td>${d.createdAt?.toDate?.()?.toLocaleDateString()||'—'}</td><td><button class="btn btn-sm btn-outline" onclick="viewReceive('${doc.id}')">View</button></td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        async function loadRecentReceives() {
+            try {
+                const snap = await db.collection('receives').orderBy('createdAt', 'desc').limit(5).get();
+                const tbody = $('recentReceiveTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No data</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html +=
+                        `<tr><td>${doc.id.slice(0,6)}</td><td>${d.from||'—'}</td><td><span class="badge ${d.status==='pending'?'badge-warning':'badge-success'}">${d.status||'pending'}</span></td><td>${d.createdAt?.toDate?.()?.toLocaleDateString()||'—'}</td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        window.viewReceive = async (id) => {
+            try {
+                const doc = await db.collection('receives').doc(id).get();
+                if (!doc.exists) return showToast('Not found', 'error');
+                const d = doc.data();
+                openModal('Receive ' + id.slice(0, 6),
+                    `<p><strong>From:</strong> ${d.from||'—'}</p><p><strong>Items:</strong> ${d.items||0}</p><p><strong>Status:</strong> ${d.status||'pending'}</p><p><strong>Date:</strong> ${d.createdAt?.toDate?.()?.toLocaleString()||'—'}</p>`);
+            } catch (e) { showToast(e.message, 'error'); }
+        };
+
+        $('newReceiveBtn').addEventListener('click', () => {
+            openModal('New Receive', `
+            <div class="form-group"><label>From (Supplier/Branch)</label><input id="receiveFrom" placeholder="Supplier name" /></div>
+            <div class="form-group"><label>Items (comma separated)</label><input id="receiveItems" placeholder="Item1, Item2" /></div>
+            <div class="form-group"><label>Notes</label><textarea id="receiveNotes" rows="2"></textarea></div>
+            <button class="btn btn-success" id="saveReceiveBtn"><i class="fas fa-arrow-down"></i> Create Receive</button>
+          `);
+            $('saveReceiveBtn').addEventListener('click', async () => {
+                const from = $('receiveFrom').value.trim();
+                const items = $('receiveItems').value.trim();
+                const notes = $('receiveNotes').value.trim();
+                if (!from || !items) { showToast('Please fill in all fields', 'error'); return; }
+                try {
+                    await db.collection('receives').add({
+                        from: from,
+                        items: items.split(',').map(s => s.trim()),
+                        status: 'pending',
+                        notes: notes,
+                        createdBy: currentUser?.uid || 'system',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    showToast('Receive created!');
+                    closeModal();
+                    loadReceives();
+                    updateStats();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  WAREHOUSE
+        // ────────────────────────────────────────────────────────────────
+        async function loadWarehouse() {
+            try {
+                const snap = await db.collection('warehouse').get();
+                const tbody = $('warehouseTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="6" style="text-align:center;color:var(--text-light)">No items</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html +=
+                        `<tr><td>${d.code||'—'}</td><td>${d.item||'—'}</td><td>${d.qty||0}</td><td>$${d.price||0}</td><td>${d.location||'Main'}</td><td><button class="btn btn-sm btn-danger" onclick="deleteWarehouseItem('${doc.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        window.deleteWarehouseItem = async (id) => {
+            if (!confirm('Delete this item?')) return;
+            try { await db.collection('warehouse').doc(id).delete();
+                showToast('Deleted');
+                loadWarehouse();
+                updateStats(); } catch (e) { showToast(e.message, 'error'); }
+        };
+
+        $('newWarehouseItemBtn').addEventListener('click', () => {
+            openModal('Add Warehouse Item', `
+            <div class="form-row"><div class="form-group"><label>Code</label><input id="whCode" placeholder="WH-001" /></div><div class="form-group"><label>Item</label><input id="whItem" placeholder="Item name" /></div></div>
+            <div class="form-row"><div class="form-group"><label>Quantity</label><input id="whQty" type="number" value="0" /></div><div class="form-group"><label>Price</label><input id="whPrice" type="number" step="0.01" value="0" /></div></div>
+            <div class="form-group"><label>Location</label><input id="whLocation" placeholder="Aisle 1" /></div>
+            <button class="btn btn-primary" id="saveWhBtn"><i class="fas fa-save"></i> Add Item</button>
+          `);
+            $('saveWhBtn').addEventListener('click', async () => {
+                const code = $('whCode').value.trim() || 'WH-' + Date.now().toString(36).toUpperCase();
+                const item = $('whItem').value.trim();
+                const qty = parseInt($('whQty').value) || 0;
+                const price = parseFloat($('whPrice').value) || 0;
+                const location = $('whLocation').value.trim() || 'Main';
+                if (!item) { showToast('Item name is required', 'error'); return; }
+                try {
+                    await db.collection('warehouse').add({ code, item, qty, price, location,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                    showToast('Item added!');
+                    closeModal();
+                    loadWarehouse();
+                    updateStats();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  PHARMACY SHELF
+        // ────────────────────────────────────────────────────────────────
+        async function loadShelf() {
+            try {
+                const snap = await db.collection('shelf').get();
+                const tbody = $('shelfTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="6" style="text-align:center;color:var(--text-light)">No items</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html +=
+                        `<tr><td>${d.code||'—'}</td><td>${d.item||'—'}</td><td>${d.qty||0}</td><td>$${d.price||0}</td><td>${d.shelf||'A-01'}</td><td><button class="btn btn-sm btn-danger" onclick="deleteShelfItem('${doc.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        window.deleteShelfItem = async (id) => {
+            if (!confirm('Delete this item?')) return;
+            try { await db.collection('shelf').doc(id).delete();
+                showToast('Deleted');
+                loadShelf(); } catch (e) { showToast(e.message, 'error'); }
+        };
+
+        $('newShelfItemBtn').addEventListener('click', () => {
+            openModal('Add Shelf Item', `
+            <div class="form-row"><div class="form-group"><label>Code</label><input id="shCode" placeholder="SH-001" /></div><div class="form-group"><label>Item</label><input id="shItem" placeholder="Item name" /></div></div>
+            <div class="form-row"><div class="form-group"><label>Quantity</label><input id="shQty" type="number" value="0" /></div><div class="form-group"><label>Price</label><input id="shPrice" type="number" step="0.01" value="0" /></div></div>
+            <div class="form-group"><label>Shelf</label><input id="shShelf" placeholder="A-01" /></div>
+            <button class="btn btn-primary" id="saveShBtn"><i class="fas fa-save"></i> Add Item</button>
+          `);
+            $('saveShBtn').addEventListener('click', async () => {
+                const code = $('shCode').value.trim() || 'SH-' + Date.now().toString(36).toUpperCase();
+                const item = $('shItem').value.trim();
+                const qty = parseInt($('shQty').value) || 0;
+                const price = parseFloat($('shPrice').value) || 0;
+                const shelf = $('shShelf').value.trim() || 'A-01';
+                if (!item) { showToast('Item name is required', 'error'); return; }
+                try {
+                    await db.collection('shelf').add({ code, item, qty, price, shelf,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                    showToast('Item added!');
+                    closeModal();
+                    loadShelf();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  BRANCHES
+        // ────────────────────────────────────────────────────────────────
+        async function loadBranches() {
+            try {
+                const snap = await db.collection('branches').get();
+                const tbody = $('branchesTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="5" style="text-align:center;color:var(--text-light)">No branches</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html +=
+                        `<tr><td>${d.name||'—'}</td><td>${d.location||'—'}</td><td>${d.manager||'—'}</td><td><span class="badge ${d.status==='active'?'badge-success':'badge-warning'}">${d.status||'active'}</span></td><td><button class="btn btn-sm btn-danger" onclick="deleteBranch('${doc.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        window.deleteBranch = async (id) => {
+            if (!confirm('Delete this branch?')) return;
+            try { await db.collection('branches').doc(id).delete();
+                showToast('Deleted');
+                loadBranches(); } catch (e) { showToast(e.message, 'error'); }
+        };
+
+        $('newBranchBtn').addEventListener('click', () => {
+            openModal('Add Branch', `
+            <div class="form-group"><label>Branch Name</label><input id="branchName" placeholder="Main Branch" /></div>
+            <div class="form-group"><label>Location</label><input id="branchLoc" placeholder="City, Address" /></div>
+            <div class="form-group"><label>Manager</label><input id="branchManager" placeholder="Manager name" /></div>
+            <div class="form-group"><label>Status</label><select id="branchStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+            <button class="btn btn-primary" id="saveBranchBtn"><i class="fas fa-save"></i> Add Branch</button>
+          `);
+            $('saveBranchBtn').addEventListener('click', async () => {
+                const name = $('branchName').value.trim();
+                const location = $('branchLoc').value.trim();
+                const manager = $('branchManager').value.trim();
+                const status = $('branchStatus').value;
+                if (!name) { showToast('Branch name is required', 'error'); return; }
+                try {
+                    await db.collection('branches').add({ name, location, manager, status,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                    showToast('Branch added!');
+                    closeModal();
+                    loadBranches();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  SUPPLIERS
+        // ────────────────────────────────────────────────────────────────
+        async function loadSuppliers() {
+            try {
+                const snap = await db.collection('suppliers').get();
+                const tbody = $('suppliersTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="5" style="text-align:center;color:var(--text-light)">No suppliers</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html +=
+                        `<tr><td>${d.name||'—'}</td><td>${d.contact||'—'}</td><td>${d.email||'—'}</td><td>${d.products||'—'}</td><td><button class="btn btn-sm btn-danger" onclick="deleteSupplier('${doc.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        window.deleteSupplier = async (id) => {
+            if (!confirm('Delete this supplier?')) return;
+            try { await db.collection('suppliers').doc(id).delete();
+                showToast('Deleted');
+                loadSuppliers(); } catch (e) { showToast(e.message, 'error'); }
+        };
+
+        $('newSupplierBtn').addEventListener('click', () => {
+            openModal('Add Supplier', `
+            <div class="form-group"><label>Supplier Name</label><input id="supName" placeholder="Supplier Inc." /></div>
+            <div class="form-group"><label>Contact</label><input id="supContact" placeholder="+123456789" /></div>
+            <div class="form-group"><label>Email</label><input id="supEmail" placeholder="supplier@example.com" /></div>
+            <div class="form-group"><label>Products</label><input id="supProducts" placeholder="Product categories" /></div>
+            <button class="btn btn-primary" id="saveSupBtn"><i class="fas fa-save"></i> Add Supplier</button>
+          `);
+            $('saveSupBtn').addEventListener('click', async () => {
+                const name = $('supName').value.trim();
+                const contact = $('supContact').value.trim();
+                const email = $('supEmail').value.trim();
+                const products = $('supProducts').value.trim();
+                if (!name) { showToast('Supplier name is required', 'error'); return; }
+                try {
+                    await db.collection('suppliers').add({ name, contact, email, products,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                    showToast('Supplier added!');
+                    closeModal();
+                    loadSuppliers();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  REQUEST SHIPMENT
+        // ────────────────────────────────────────────────────────────────
+        async function loadRequests() {
+            try {
+                const snap = await db.collection('requests').orderBy('createdAt', 'desc').get();
+                const tbody = $('requestTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="6" style="text-align:center;color:var(--text-light)">No requests</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html +=
+                        `<tr><td>${doc.id.slice(0,6)}</td><td>${d.from||'—'}</td><td>${d.to||'—'}</td><td>${d.items||0}</td><td><span class="badge ${d.status==='pending'?'badge-warning':d.status==='approved'?'badge-success':'badge-info'}">${d.status||'pending'}</span></td><td>${d.createdAt?.toDate?.()?.toLocaleDateString()||'—'}</td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        $('newRequestBtn').addEventListener('click', () => {
+            openModal('New Shipment Request', `
+            <div class="form-group"><label>From</label><input id="reqFrom" placeholder="Warehouse/Branch" /></div>
+            <div class="form-group"><label>To</label><input id="reqTo" placeholder="Destination" /></div>
+            <div class="form-group"><label>Items (comma separated)</label><input id="reqItems" placeholder="Item1, Item2" /></div>
+            <button class="btn btn-primary" id="saveReqBtn"><i class="fas fa-paper-plane"></i> Submit Request</button>
+          `);
+            $('saveReqBtn').addEventListener('click', async () => {
+                const from = $('reqFrom').value.trim();
+                const to = $('reqTo').value.trim();
+                const items = $('reqItems').value.trim();
+                if (!from || !to || !items) { showToast('Please fill in all fields', 'error'); return; }
+                try {
+                    await db.collection('requests').add({
+                        from,
+                        to,
+                        items: items.split(',').map(s => s.trim()),
+                        status: 'pending',
+                        createdBy: currentUser?.uid || 'system',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    showToast('Request submitted!');
+                    closeModal();
+                    loadRequests();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  RETURNS
+        // ────────────────────────────────────────────────────────────────
+        async function loadReturns() {
+            try {
+                const snap = await db.collection('returns').orderBy('createdAt', 'desc').get();
+                const tbody = $('returnsTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="6" style="text-align:center;color:var(--text-light)">No returns</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html +=
+                        `<tr><td>${doc.id.slice(0,6)}</td><td>${d.from||'—'}</td><td>${d.items||0}</td><td>${d.reason||'—'}</td><td><span class="badge ${d.status==='pending'?'badge-warning':'badge-success'}">${d.status||'pending'}</span></td><td>${d.createdAt?.toDate?.()?.toLocaleDateString()||'—'}</td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        $('newReturnBtn').addEventListener('click', () => {
+            openModal('New Return', `
+            <div class="form-group"><label>From</label><input id="retFrom" placeholder="Branch/Supplier" /></div>
+            <div class="form-group"><label>Items (comma separated)</label><input id="retItems" placeholder="Item1, Item2" /></div>
+            <div class="form-group"><label>Reason</label><textarea id="retReason" rows="2"></textarea></div>
+            <button class="btn btn-primary" id="saveRetBtn"><i class="fas fa-undo"></i> Create Return</button>
+          `);
+            $('saveRetBtn').addEventListener('click', async () => {
+                const from = $('retFrom').value.trim();
+                const items = $('retItems').value.trim();
+                const reason = $('retReason').value.trim();
+                if (!from || !items) { showToast('Please fill in required fields', 'error'); return; }
+                try {
+                    await db.collection('returns').add({
+                        from,
+                        items: items.split(',').map(s => s.trim()),
+                        reason,
+                        status: 'pending',
+                        createdBy: currentUser?.uid || 'system',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    showToast('Return created!');
+                    closeModal();
+                    loadReturns();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  INVOICE REPOSITORY
+        // ────────────────────────────────────────────────────────────────
+        async function loadInvoices() {
+            try {
+                const snap = await db.collection('invoices').orderBy('createdAt', 'desc').get();
+                const tbody = $('invoiceTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="6" style="text-align:center;color:var(--text-light)">No invoices</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html +=
+                        `<tr><td>${doc.id.slice(0,6)}</td><td>${d.supplier||'—'}</td><td>$${d.amount||0}</td><td><span class="badge ${d.status==='paid'?'badge-success':d.status==='pending'?'badge-warning':'badge-info'}">${d.status||'pending'}</span></td><td>${d.createdAt?.toDate?.()?.toLocaleDateString()||'—'}</td><td><button class="btn btn-sm btn-outline" onclick="viewInvoice('${doc.id}')">View</button></td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        window.viewInvoice = async (id) => {
+            try {
+                const doc = await db.collection('invoices').doc(id).get();
+                if (!doc.exists) return showToast('Not found', 'error');
+                const d = doc.data();
+                openModal('Invoice ' + id.slice(0, 6),
+                    `<p><strong>Supplier:</strong> ${d.supplier||'—'}</p><p><strong>Amount:</strong> $${d.amount||0}</p><p><strong>Status:</strong> ${d.status||'pending'}</p><p><strong>Date:</strong> ${d.createdAt?.toDate?.()?.toLocaleString()||'—'}</p>`);
+            } catch (e) { showToast(e.message, 'error'); }
+        };
+
+        $('newInvoiceBtn').addEventListener('click', () => {
+            openModal('New Invoice', `
+            <div class="form-group"><label>Supplier</label><input id="invSupplier" placeholder="Supplier name" /></div>
+            <div class="form-group"><label>Amount</label><input id="invAmount" type="number" step="0.01" value="0" /></div>
+            <div class="form-group"><label>Status</label><select id="invStatus"><option value="pending">Pending</option><option value="paid">Paid</option></select></div>
+            <button class="btn btn-primary" id="saveInvBtn"><i class="fas fa-save"></i> Create Invoice</button>
+          `);
+            $('saveInvBtn').addEventListener('click', async () => {
+                const supplier = $('invSupplier').value.trim();
+                const amount = parseFloat($('invAmount').value) || 0;
+                const status = $('invStatus').value;
+                if (!supplier) { showToast('Supplier is required', 'error'); return; }
+                try {
+                    await db.collection('invoices').add({ supplier, amount, status,
+                        createdBy: currentUser?.uid || 'system',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                    showToast('Invoice created!');
+                    closeModal();
+                    loadInvoices();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  OUTSTANDING INVOICE
+        // ────────────────────────────────────────────────────────────────
+        async function loadOutstandingInvoices() {
+            try {
+                const snap = await db.collection('invoices').where('status', '==', 'pending').get();
+                const tbody = $('outstandingInvoiceTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="5" style="text-align:center;color:var(--text-light)">No outstanding invoices</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html +=
+                        `<tr><td>${doc.id.slice(0,6)}</td><td>${d.supplier||'—'}</td><td>$${d.amount||0}</td><td>${d.createdAt?.toDate?.()?.toLocaleDateString()||'—'}</td><td><button class="btn btn-sm btn-success" onclick="markInvoicePaid('${doc.id}')"><i class="fas fa-check"></i> Mark Paid</button></td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        window.markInvoicePaid = async (id) => {
+            try {
+                await db.collection('invoices').doc(id).update({ status: 'paid',
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                showToast('Invoice marked as paid');
+                loadOutstandingInvoices();
+                loadInvoices();
+            } catch (e) { showToast(e.message, 'error'); }
+        };
+
+        // ────────────────────────────────────────────────────────────────
+        //  OUTSTANDING SHIPMENT
+        // ────────────────────────────────────────────────────────────────
+        async function loadOutstandingShipments() {
+            try {
+                const snap = await db.collection('dispatches').where('status', '==', 'pending').get();
+                const tbody = $('outstandingShipmentTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="6" style="text-align:center;color:var(--text-light)">No outstanding shipments</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html +=
+                        `<tr><td>${doc.id.slice(0,6)}</td><td>${d.destination||'—'}</td><td>${d.destination||'—'}</td><td>${d.items||0}</td><td><span class="badge badge-warning">pending</span></td><td><button class="btn btn-sm btn-success" onclick="completeDispatch('${doc.id}')"><i class="fas fa-check"></i> Complete</button></td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        window.completeDispatch = async (id) => {
+            try {
+                await db.collection('dispatches').doc(id).update({ status: 'completed',
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                showToast('Dispatch completed');
+                loadOutstandingShipments();
+                loadDispatches();
+                updateStats();
+            } catch (e) { showToast(e.message, 'error'); }
+        };
+
+        // ────────────────────────────────────────────────────────────────
+        //  RECONCILIATION
+        // ────────────────────────────────────────────────────────────────
+        async function loadReconciliations() {
+            try {
+                const snap = await db.collection('reconciliations').orderBy('createdAt', 'desc').get();
+                const tbody = $('reconciliationTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="5" style="text-align:center;color:var(--text-light)">No reconciliations</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html +=
+                        `<tr><td>${d.createdAt?.toDate?.()?.toLocaleDateString()||'—'}</td><td>${d.type||'—'}</td><td><span class="badge ${d.status==='completed'?'badge-success':'badge-warning'}">${d.status||'pending'}</span></td><td>$${d.difference||0}</td><td><button class="btn btn-sm btn-outline">View</button></td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        $('reconcileBtn').addEventListener('click', async () => {
+            try {
+                // Simple reconciliation: count invoices vs dispatches
+                const [invSnap, disSnap] = await Promise.all([
+                    db.collection('invoices').where('status', '==', 'pending').get(),
+                    db.collection('dispatches').where('status', '==', 'pending').get()
+                ]);
+                const diff = invSnap.size - disSnap.size;
+                await db.collection('reconciliations').add({
+                    type: 'Invoice vs Dispatch',
+                    status: 'completed',
+                    difference: diff,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showToast('Reconciliation completed! Difference: ' + diff);
+                loadReconciliations();
+            } catch (e) { showToast(e.message, 'error'); }
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  LEDGER
+        // ────────────────────────────────────────────────────────────────
+        async function loadLedger() {
+            try {
+                const snap = await db.collection('ledger').orderBy('date', 'desc').limit(20).get();
+                const tbody = $('ledgerTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="5" style="text-align:center;color:var(--text-light)">No ledger entries</td></tr>'; return; }
+                let html = '';
+                let balance = 0;
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const debit = d.debit || 0;
+                    const credit = d.credit || 0;
+                    balance += debit - credit;
+                    html +=
+                        `<tr><td>${d.date?.toDate?.()?.toLocaleDateString()||'—'}</td><td>${d.description||'—'}</td><td>$${debit}</td><td>$${credit}</td><td>$${balance}</td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        //  USERS
+        // ────────────────────────────────────────────────────────────────
+        async function loadUsers() {
+            try {
+                const snap = await db.collection('users').get();
+                const tbody = $('usersTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No users</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const role = d.role || 'user';
+                    const isSuper = role === 'superadmin';
+                    const isAdmin = role === 'admin';
+                    html +=
+                        `<tr><td>${d.email||'—'}</td><td>${isSuper?'<span class="super-badge">Super Admin</span>':isAdmin?'<span class="admin-badge">Admin</span>':'<span class="chip">User</span>'}</td><td><span class="badge badge-success">active</span></td><td>${currentUserRole==='superadmin'&&!isSuper?`<button class="btn btn-sm btn-danger" onclick="deleteUser('${doc.id}')"><i class="fas fa-trash"></i></button>`:'—'}</td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        window.deleteUser = async (id) => {
+            if (!confirm('Delete this user?')) return;
+            try { await db.collection('users').doc(id).delete();
+                showToast('User deleted');
+                loadUsers(); } catch (e) { showToast(e.message, 'error'); }
+        };
+
+        $('newUserBtn').addEventListener('click', () => {
+            if (currentUserRole !== 'superadmin' && currentUserRole !== 'admin') {
+                showToast('Only admins can add users', 'error');
+                return;
+            }
+            openModal('Add User', `
+            <div class="form-group"><label>Email</label><input id="newUserEmail" placeholder="user@example.com" /></div>
+            <div class="form-group"><label>Password</label><input id="newUserPass" type="password" placeholder="••••••••" /></div>
+            <div class="form-group"><label>Role</label><select id="newUserRole"><option value="user">User</option><option value="admin">Admin</option></select></div>
+            <button class="btn btn-primary" id="saveUserBtn"><i class="fas fa-user-plus"></i> Create User</button>
+          `);
+            $('saveUserBtn').addEventListener('click', async () => {
+                const email = $('newUserEmail').value.trim();
+                const pass = $('newUserPass').value;
+                const role = $('newUserRole').value;
+                if (!email || !pass) { showToast('Please fill in all fields', 'error'); return; }
+                try {
+                    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+                    await db.collection('users').doc(cred.user.uid).set({
+                        email,
+                        role,
+                        displayName: email,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    showToast('User created!');
+                    closeModal();
+                    loadUsers();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  ADMIN (list)
+        // ────────────────────────────────────────────────────────────────
+        async function loadAdmins() {
+            try {
+                const snap = await db.collection('users').where('role', 'in', ['admin', 'superadmin']).get();
+                const tbody = $('adminTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No admin users</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const isSuper = d.role === 'superadmin';
+                    html +=
+                        `<tr><td>${d.email||'—'}</td><td>${isSuper?'<span class="super-badge">Super Admin</span>':'<span class="admin-badge">Admin</span>'}</td><td><span class="badge badge-success">active</span></td><td>${currentUserRole==='superadmin'&&!isSuper?`<button class="btn btn-sm btn-danger" onclick="deleteUser('${doc.id}')"><i class="fas fa-trash"></i></button>`:'—'}</td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        //  SUPER ADMIN
+        // ────────────────────────────────────────────────────────────────
+        $('superCreateAdminBtn').addEventListener('click', async () => {
+            if (currentUserRole !== 'superadmin') { showToast('Super admin only', 'error'); return; }
+            const email = $('superCreateAdminEmail').value.trim();
+            const pass = $('superCreateAdminPass').value;
+            if (!email || !pass) { showToast('Please fill in all fields', 'error'); return; }
+            try {
+                const cred = await auth.createUserWithEmailAndPassword(email, pass);
+                await db.collection('users').doc(cred.user.uid).set({
+                    email,
+                    role: 'admin',
+                    displayName: email,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showToast('Admin created!');
+                $('superCreateAdminEmail').value = '';
+                $('superCreateAdminPass').value = '';
+                loadAdmins();
+                loadUsers();
+            } catch (e) { showToast(e.message, 'error'); }
+        });
+
+        $('superDeleteAdminBtn').addEventListener('click', async () => {
+            if (currentUserRole !== 'superadmin') { showToast('Super admin only', 'error'); return; }
+            const email = $('superDeleteAdminEmail').value.trim();
+            if (!email) { showToast('Please enter admin email', 'error'); return; }
+            try {
+                const snap = await db.collection('users').where('email', '==', email).where('role', '==', 'admin').get();
+                if (snap.empty) { showToast('Admin not found', 'error'); return; }
+                let uid = null;
+                snap.forEach(doc => { uid = doc.id;
+                    doc.ref.delete(); });
+                if (uid) {
+                    // disable auth user (can't delete via client SDK, we just remove from Firestore)
+                    showToast('Admin removed from system');
+                    $('superDeleteAdminEmail').value = '';
+                    loadAdmins();
+                    loadUsers();
+                }
+            } catch (e) { showToast(e.message, 'error'); }
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  SYSTEM CONFIG
+        // ────────────────────────────────────────────────────────────────
+        $('configAuthBtn').addEventListener('click', async () => {
+            const pass = $('configAuthPass').value;
+            if (!pass) { showToast('Please enter password', 'error'); return; }
+            // Re-authenticate
+            try {
+                const cred = await auth.signInWithEmailAndPassword(currentUser.email, pass);
+                $('configSections').classList.remove('hidden');
+                showToast('Authenticated!');
+                // load config values
+                loadConfigValues();
+            } catch (e) {
+                showToast('Invalid password', 'error');
+            }
+        });
+
+        async function loadConfigValues() {
+            try {
+                const doc = await db.collection('config').doc('system').get();
+                if (doc.exists) {
+                    const d = doc.data();
+                    $('cfgProfileName').value = d.profileName || '';
+                    $('cfgProfileEmail').value = d.profileEmail || '';
+                    $('cfgDashboardView').value = d.dashboardView || 'overview';
+                    $('cfgDefaultRole').value = d.defaultRole || 'user';
+                    $('cfgWarehouseLoc').value = d.warehouseLoc || 'Main Warehouse';
+                    $('cfgShelfDefault').value = d.shelfDefault || 'A-01';
+                    $('cfgReportPeriod').value = d.reportPeriod || 'monthly';
+                    $('cfgAutoBackup').value = d.autoBackup || 'on';
+                    $('cfgResetFreq').value = d.resetFreq || 'never';
+                    $('cfg2FA').value = d.twoFA || 'no';
+                }
+            } catch (e) { console.warn(e); }
+        }
+
+        $('saveAllConfigBtn').addEventListener('click', async () => {
+            if (currentUserRole !== 'superadmin') { showToast('Super admin only', 'error'); return; }
+            const data = {
+                profileName: $('cfgProfileName').value,
+                profileEmail: $('cfgProfileEmail').value,
+                dashboardView: $('cfgDashboardView').value,
+                defaultRole: $('cfgDefaultRole').value,
+                warehouseLoc: $('cfgWarehouseLoc').value,
+                shelfDefault: $('cfgShelfDefault').value,
+                reportPeriod: $('cfgReportPeriod').value,
+                autoBackup: $('cfgAutoBackup').value,
+                resetFreq: $('cfgResetFreq').value,
+                twoFA: $('cfg2FA').value,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            try {
+                await db.collection('config').doc('system').set(data, { merge: true });
+                showToast('Config saved!');
+            } catch (e) { showToast(e.message, 'error'); }
+        });
+
+        $('cfgWipeBtn').addEventListener('click', async () => {
+            if (!confirm('⚠️ WARNING: This will delete ALL data. Are you sure?')) return;
+            if (!confirm('Type "YES" to confirm')) return;
+            if (currentUserRole !== 'superadmin') { showToast('Super admin only', 'error'); return; }
+            try {
+                const collections = ['dispatches', 'receives', 'warehouse', 'shelf', 'branches', 'suppliers', 'requests',
+                    'returns', 'invoices', 'reconciliations', 'ledger', 'users'
+                ];
+                for (const col of collections) {
+                    const snap = await db.collection(col).get();
+                    const batch = db.batch();
+                    snap.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                }
+                showToast('All data wiped!');
+            } catch (e) { showToast(e.message, 'error'); }
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  REPORTS
+        // ────────────────────────────────────────────────────────────────
+        async function loadReports() {
+            try {
+                const snap = await db.collection('reports').orderBy('generatedAt', 'desc').limit(10).get();
+                const tbody = $('reportsTable');
+                if (snap.empty) { tbody.innerHTML =
+                        '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No reports</td></tr>'; return; }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    html +=
+                        `<tr><td>${d.title||'—'}</td><td>${d.generatedAt?.toDate?.()?.toLocaleString()||'—'}</td><td>${d.type||'—'}</td><td><button class="btn btn-sm btn-outline">Download</button></td></tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        //  DATA
+        // ────────────────────────────────────────────────────────────────
+        async function loadDataCollections() {
+            try {
+                const collections = ['dispatches', 'receives', 'warehouse', 'shelf', 'branches', 'suppliers', 'requests',
+                    'returns', 'invoices', 'reconciliations', 'ledger', 'users'
+                ];
+                const tbody = $('dataTable');
+                let html = '';
+                for (const col of collections) {
+                    const snap = await db.collection(col).get();
+                    const last = snap.docs[snap.docs.length - 1];
+                    const updated = last?.data()?.updatedAt?.toDate?.()?.toLocaleString() || last?.data()?.createdAt
+                        ?.toDate?.()?.toLocaleString() || '—';
+                    html +=
+                        `<tr><td><strong>${col}</strong></td><td>${snap.size}</td><td>${updated}</td><td><button class="btn btn-sm btn-outline" onclick="exportCollection('${col}')"><i class="fas fa-download"></i></button></td></tr>`;
+                }
+                tbody.innerHTML = html;
+            } catch (e) { console.warn(e); }
+        }
+
+        window.exportCollection = async (col) => {
+            try {
+                const snap = await db.collection(col).get();
+                const data = [];
+                snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${col}-export.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast(`Exported ${col}`);
+            } catch (e) { showToast(e.message, 'error'); }
+        };
+
+        // ────────────────────────────────────────────────────────────────
+        //  NOTIFICATIONS
+        // ────────────────────────────────────────────────────────────────
+        async function loadNotifications() {
+            try {
+                const snap = await db.collection('notifications')
+                    .where('userId', '==', currentUser?.uid || '')
+                    .orderBy('createdAt', 'desc')
+                    .limit(20)
+                    .get();
+                const container = $('notificationsList');
+                if (snap.empty) {
+                    container.innerHTML =
+                        '<div class="card" style="text-align:center;color:var(--text-light)">No notifications</div>';
+                    return;
+                }
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const isRead = d.read || false;
+                    html += `<div class="card" style="${isRead?'opacity:0.7':''}">
+                <div class="flex-between"><strong>${d.title||'Notification'}</strong><span style="font-size:0.75rem;color:var(--text-light)">${d.createdAt?.toDate?.()?.toLocaleString()||'—'}</span></div>
+                <p style="margin-top:4px;font-size:0.9rem;color:var(--text-light)">${d.body||''}</p>
+                ${!isRead?`<button class="btn btn-sm btn-outline" onclick="markNotifRead('${doc.id}')"><i class="fas fa-check"></i> Mark Read</button>`:''}
+              </div>`;
+                });
+                container.innerHTML = html;
+                // update dot
+                const unread = snap.docs.filter(d => !d.data().read).length;
+                $('notifDot').style.display = unread > 0 ? 'block' : 'none';
+            } catch (e) { console.warn(e); }
+        }
+
+        window.markNotifRead = async (id) => {
+            try {
+                await db.collection('notifications').doc(id).update({ read: true });
+                loadNotifications();
+            } catch (e) { showToast(e.message, 'error'); }
+        };
+
+        $('markAllReadBtn').addEventListener('click', async () => {
+            try {
+                const snap = await db.collection('notifications')
+                    .where('userId', '==', currentUser?.uid || '')
+                    .where('read', '==', false)
+                    .get();
+                const batch = db.batch();
+                snap.forEach(doc => batch.update(doc.ref, { read: true }));
+                await batch.commit();
+                showToast('All marked as read');
+                loadNotifications();
+            } catch (e) { showToast(e.message, 'error'); }
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  SHEET
+        // ────────────────────────────────────────────────────────────────
+        function loadSheet() {
+            const tbody = $('sheetBody');
+            if (sheetRows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-light)">No rows — add one below</td></tr>';
+                updateSheetTotals();
+                return;
+            }
+            let html = '';
+            sheetRows.forEach((row, idx) => {
+                const amount = (row.qty || 0) * (row.price || 0);
+                const discount = (amount * (row.discount || 0)) / 100;
+                const vat = ((amount - discount) * (row.vat || 0)) / 100;
+                const total = amount - discount + vat;
+                html += `<tr>
+              <td><input value="${row.code||''}" onchange="updateSheetRow(${idx},'code',this.value)" style="width:70px" /></td>
+              <td><input value="${row.item||''}" onchange="updateSheetRow(${idx},'item',this.value)" style="width:100px" /></td>
+              <td><input type="number" value="${row.packingQty||0}" onchange="updateSheetRow(${idx},'packingQty',parseFloat(this.value)||0)" style="width:60px" /></td>
+              <td><input type="number" step="0.01" value="${row.price||0}" onchange="updateSheetRow(${idx},'price',parseFloat(this.value)||0)" style="width:70px" /></td>
+              <td><input type="number" value="${row.qty||0}" onchange="updateSheetRow(${idx},'qty',parseFloat(this.value)||0)" style="width:60px" /></td>
+              <td>${total.toFixed(2)}</td>
+              <td><input type="number" step="0.1" value="${row.discount||0}" onchange="updateSheetRow(${idx},'discount',parseFloat(this.value)||0)" style="width:60px" /></td>
+              <td><input type="number" step="0.1" value="${row.vat||0}" onchange="updateSheetRow(${idx},'vat',parseFloat(this.value)||0)" style="width:60px" /></td>
+              <td><button class="btn btn-sm btn-danger" onclick="removeSheetRow(${idx})"><i class="fas fa-trash"></i></button></td>
+            </tr>`;
+            });
+            tbody.innerHTML = html;
+            updateSheetTotals();
+        }
+
+        function updateSheetRow(idx, field, value) {
+            if (sheetRows[idx]) {
+                sheetRows[idx][field] = value;
+                loadSheet();
+            }
+        }
+
+        window.removeSheetRow = (idx) => {
+            sheetRows.splice(idx, 1);
+            loadSheet();
+        };
+
+        function updateSheetTotals() {
+            let totalAmount = 0,
+                totalDiscount = 0,
+                totalVat = 0;
+            sheetRows.forEach(row => {
+                const amount = (row.qty || 0) * (row.price || 0);
+                const discount = (amount * (row.discount || 0)) / 100;
+                const vat = ((amount - discount) * (row.vat || 0)) / 100;
+                totalAmount += amount;
+                totalDiscount += discount;
+                totalVat += vat;
+            });
+            $('sheetTotalAmount').textContent = totalAmount.toFixed(2);
+            $('sheetTotalDiscount').textContent = totalDiscount.toFixed(2);
+            $('sheetTotalVat').textContent = totalVat.toFixed(2);
+        }
+
+        $('addSheetRowBtn').addEventListener('click', () => {
+            sheetRows.push({ code: '', item: '', packingQty: 0, price: 0, qty: 0, discount: 0, vat: 0 });
+            loadSheet();
+        });
+
+        $('sheetSettingsBtn').addEventListener('click', () => {
+            openModal('Sheet Settings', `
+            <div class="form-group"><label>Template Name</label><input id="sheetTemplateName" placeholder="My Template" /></div>
+            <div class="form-group"><label>Default Discount (%)</label><input id="sheetDefaultDiscount" type="number" value="0" /></div>
+            <div class="form-group"><label>Default VAT (%)</label><input id="sheetDefaultVat" type="number" value="7.5" /></div>
+            <button class="btn btn-primary" id="saveSheetTemplateBtn"><i class="fas fa-save"></i> Save Template</button>
+            <button class="btn btn-outline" id="loadSheetTemplateBtn" style="margin-top:8px"><i class="fas fa-upload"></i> Load Template</button>
+          `);
+            $('saveSheetTemplateBtn').addEventListener('click', async () => {
+                const name = $('sheetTemplateName').value.trim() || 'Template';
+                const discount = parseFloat($('sheetDefaultDiscount').value) || 0;
+                const vat = parseFloat($('sheetDefaultVat').value) || 0;
+                try {
+                    await db.collection('sheetTemplates').add({
+                        name,
+                        discount,
+                        vat,
+                        rows: sheetRows,
+                        createdBy: currentUser?.uid || 'system',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    showToast('Template saved!');
+                    closeModal();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+            $('loadSheetTemplateBtn').addEventListener('click', async () => {
+                try {
+                    const snap = await db.collection('sheetTemplates')
+                        .where('createdBy', '==', currentUser?.uid || '')
+                        .orderBy('createdAt', 'desc')
+                        .limit(1)
+                        .get();
+                    if (snap.empty) { showToast('No templates found', 'error'); return; }
+                    const d = snap.docs[0].data();
+                    if (d.rows) {
+                        sheetRows = d.rows;
+                        loadSheet();
+                        showToast('Template loaded!');
+                        closeModal();
+                    }
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  AUTHENTICATION (change password)
+        // ────────────────────────────────────────────────────────────────
+        $('authChangePassBtn').addEventListener('click', async () => {
+            const current = $('authCurrentPass').value;
+            const newPass = $('authNewPass').value;
+            const confirm = $('authConfirmPass').value;
+            if (!current || !newPass || !confirm) { showToast('Please fill in all fields', 'error'); return; }
+            if (newPass !== confirm) { showToast('Passwords do not match', 'error'); return; }
+            try {
+                const cred = await auth.signInWithEmailAndPassword(currentUser.email, current);
+                await cred.user.updatePassword(newPass);
+                showToast('Password changed!');
+                $('authCurrentPass').value = '';
+                $('authNewPass').value = '';
+                $('authConfirmPass').value = '';
+            } catch (e) { showToast(e.message, 'error'); }
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  RESET (password reset)
+        // ────────────────────────────────────────────────────────────────
+        $('resetPasswordBtn').addEventListener('click', async () => {
+            const email = $('resetEmail').value.trim();
+            if (!email) { showToast('Please enter your email', 'error'); return; }
+            try {
+                await auth.sendPasswordResetEmail(email);
+                showToast('Reset link sent to ' + email);
+                $('resetEmail').value = '';
+            } catch (e) { showToast(e.message, 'error'); }
+        });
+
+        // ────────────────────────────────────────────────────────────────
+        //  NOTIFICATION ICON
+        // ────────────────────────────────────────────────────────────────
+        $('notifIcon').addEventListener('click', () => navigateTo('notifications'));
+
+        // ────────────────────────────────────────────────────────────────
+        //  INIT
+        // ────────────────────────────────────────────────────────────────
+        // check for saved config values on load
+        setTimeout(() => {
+            if (currentUser) {
+                loadConfigValues();
+            }
+        }, 1000);
+
+        // handle enter key on login
+        console.log('🚀 Drugs n\' More Supply Chain System loaded.');
+        console.log('ℹ️  Use login page to sign in. Default admin: admin@drugsnmore.com / admin123');
+        console.log('🔑 Super admin can manage admins and system config.');
+
+        // ────────────────────────────────────────────────────────────────
+        //  CHART (reports) - simple placeholder using canvas
+        // ────────────────────────────────────────────────────────────────
+        function initCharts() {
+            const ctx1 = document.getElementById('reportChart1');
+            const ctx2 = document.getElementById('reportChart2');
+            if (ctx1) {
+                const c = ctx1.getContext('2d');
+                c.fillStyle = '#eef1f5';
+                c.fillRect(0, 0, ctx1.width, ctx1.height);
+                c.fillStyle = '#0b6e4f';
+                for (let i = 0; i < 8; i++) {
+                    const h = 20 + Math.random() * 60;
+                    c.fillRect(i * 30 + 10, ctx1.height - h - 10, 18, h);
+                }
+            }
+            if (ctx2) {
+                const c = ctx2.getContext('2d');
+                c.fillStyle = '#eef1f5';
+                c.fillRect(0, 0, ctx2.width, ctx2.height);
+                c.fillStyle = '#f39c12';
+                for (let i = 0; i < 6; i++) {
+                    const h = 20 + Math.random() * 50;
+                    c.fillRect(i * 40 + 15, ctx2.height - h - 10, 22, h);
+                }
+            }
+        }
+        setTimeout(initCharts, 500);
+    </script>
+</body>
+</html>
