@@ -1,15 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard · Drugs n' More</title>
-    <link rel="stylesheet" href="common.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-</head>
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Dashboard · Drugs n' More</title><link rel="stylesheet" href="common.css" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" /></head>
 <body>
     <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
-    <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
         <nav class="sidebar-nav">
@@ -47,8 +40,6 @@
         </nav>
         <div class="sidebar-footer"><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
     </aside>
-
-    <!-- MAIN -->
     <div class="main">
         <header class="header">
             <div class="header-left"><button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button><h2 id="pageTitle">Dashboard</h2></div>
@@ -74,8 +65,6 @@
             </div>
         </div>
     </div>
-
-    <!-- LOGIN -->
     <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
         <div class="login-box">
             <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
@@ -88,18 +77,11 @@
             <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
         </div>
     </div>
-
     <script src="common.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            initAuth(async (user) => {
-                // load dashboard data
-                loadStats();
-                loadRecentDispatches();
-                loadRecentReceives();
-            });
+            initAuth(async (user) => { loadStats(); loadRecentDispatches(); loadRecentReceives(); });
             attachLoginHandlers();
-
             async function loadStats() {
                 try {
                     const [d, r, w, o] = await Promise.all([
@@ -114,7 +96,6 @@
                     document.getElementById('statOutstanding').textContent = o.size;
                 } catch(e) { console.warn(e); }
             }
-
             async function loadRecentDispatches() {
                 try {
                     const snap = await db.collection('dispatches').orderBy('createdAt', 'desc').limit(5).get();
@@ -128,7 +109,6 @@
                     tbody.innerHTML = html;
                 } catch(e) { console.warn(e); }
             }
-
             async function loadRecentReceives() {
                 try {
                     const snap = await db.collection('receives').orderBy('createdAt', 'desc').limit(5).get();
