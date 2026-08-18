@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile · Drugs n' More</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        /* same shared styles as index.html – copy from index */
+        * { margin:0; padding:0; box-sizing:border-box; }
+        :root { --primary:#0b6e4f; --primary-dark:#064d37; --bg:#f4f7fa; --card:#fff; --text:#1e2a3a; --text-light:#5a6f8a; --shadow:0 8px 24px rgba(0,0,0,0.06); --radius:14px; --sidebar-width:250px; --header-height:64px; }
+        body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); display:flex; min-height:100vh; }
+        a { text-decoration:none; color:inherit; }
+        button { cursor:pointer; border:none; outline:none; font-family:inherit; font-size:0.9rem; }
+        input, select, textarea { font-family:inherit; font-size:0.9rem; border:1px solid #dde2e9; border-radius:8px; padding:10px 14px; width:100%; background:#fff; transition:0.25s; }
+        input:focus, select:focus, textarea:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(11,110,79,0.15); outline:none; }
+        table { width:100%; border-collapse:collapse; font-size:0.9rem; }
+        th, td { padding:12px 14px; text-align:left; border-bottom:1px solid #eef1f5; }
+        th { background:#f8fafc; color:var(--text-light); font-weight:600; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.04em; }
+        .badge { display:inline-block; padding:4px 12px; border-radius:30px; font-size:0.75rem; font-weight:600; }
+        .badge-success { background:#d4edda; color:#155724; }
+        .badge-warning { background:#fff3cd; color:#856404; }
+        .badge-danger { background:#f8d7da; color:#721c24; }
+        .badge-info { background:#d1ecf1; color:#0c5460; }
+        .sidebar { width:var(--sidebar-width); background:#fff; border-right:1px solid #e9ecf0; height:100vh; position:sticky; top:0; overflow-y:auto; padding:20px 16px; flex-shrink:0; display:flex; flex-direction:column; transition:transform 0.3s; z-index:100; }
+        .sidebar-brand { display:flex; align-items:center; gap:12px; font-size:1.3rem; font-weight:700; color:var(--primary); padding-bottom:24px; border-bottom:1px solid #eef1f5; margin-bottom:20px; }
+        .sidebar-brand i { font-size:1.8rem; }
+        .sidebar-nav { display:flex; flex-direction:column; gap:4px; flex:1; }
+        .sidebar-nav a { display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:10px; color:var(--text-light); font-weight:500; font-size:0.9rem; transition:0.25s; }
+        .sidebar-nav a i { width:22px; text-align:center; }
+        .sidebar-nav a:hover { background:#f0f4f9; color:var(--text); }
+        .sidebar-nav a.active { background:var(--primary); color:#fff; box-shadow:0 4px 12px rgba(11,110,79,0.25); }
+        .sidebar-nav .nav-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:#aab3c5; padding:16px 14px 6px; font-weight:600; }
+        .sidebar-footer { border-top:1px solid #eef1f5; padding-top:16px; margin-top:8px; }
+        .sidebar-footer a { display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:10px; color:var(--text-light); font-weight:500; font-size:0.9rem; transition:0.25s; }
+        .sidebar-footer a:hover { background:#f0f4f9; color:var(--text); }
+        .main { flex:1; min-width:0; display:flex; flex-direction:column; }
+        .header { height:var(--header-height); background:#fff; border-bottom:1px solid #e9ecf0; padding:0 32px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50; }
+        .header-left { display:flex; align-items:center; gap:16px; }
+        .header-left .menu-toggle { display:none; background:none; font-size:1.4rem; color:var(--text); }
+        .header-left h2 { font-size:1.1rem; font-weight:600; }
+        .header-right { display:flex; align-items:center; gap:18px; }
+        .header-right .notif-btn { background:none; font-size:1.2rem; color:var(--text-light); position:relative; }
+        .header-right .notif-btn .dot { width:8px; height:8px; background:#e74c3c; border-radius:50%; position:absolute; top:-2px; right:-4px; }
+        .header-right .user-badge { display:flex; align-items:center; gap:10px; background:#f0f4f9; padding:6px 14px 6px 10px; border-radius:30px; font-weight:500; font-size:0.85rem; }
+        .header-right .user-badge i { font-size:1.2rem; color:var(--primary); }
+        .content { padding:28px 32px; flex:1; overflow-y:auto; }
+        .page-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:24px; }
+        .page-header h2 { font-size:1.5rem; font-weight:700; }
+        .page-header .sub { color:var(--text-light); font-size:0.9rem; }
+        .actions { display:flex; gap:10px; flex-wrap:wrap; }
+        .btn { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:30px; font-weight:600; font-size:0.85rem; transition:0.25s; background:#eef1f5; color:var(--text); }
+        .btn-primary { background:var(--primary); color:#fff; }
+        .btn-primary:hover { background:var(--primary-dark); transform:translateY(-1px); box-shadow:0 6px 16px rgba(11,110,79,0.25); }
+        .btn-outline { background:transparent; border:1.5px solid #dde2e9; }
+        .btn-outline:hover { border-color:var(--primary); color:var(--primary); }
+        .btn-danger { background:#e74c3c; color:#fff; }
+        .btn-success { background:#28a745; color:#fff; }
+        .btn-sm { padding:6px 14px; font-size:0.78rem; }
+        .card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:22px 26px; margin-bottom:24px; }
+        .card-title { font-weight:600; font-size:1rem; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+        .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+        .form-group { margin-bottom:16px; }
+        .form-group label { display:block; font-weight:500; font-size:0.85rem; margin-bottom:4px; color:var(--text-light); }
+        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        .toast { position:fixed; bottom:30px; right:30px; background:#1e2a3a; color:#fff; padding:14px 24px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.2); display:flex; align-items:center; gap:12px; z-index:9999; opacity:0; transform:translateY(20px); transition:all 0.3s; pointer-events:none; max-width:400px; }
+        .toast.show { opacity:1; transform:translateY(0); pointer-events:auto; }
+        .toast i { font-size:1.2rem; }
+        .toast.success i { color:#2ecc71; }
+        .toast.error i { color:#e74c3c; }
+        .super-badge { background:#8e44ad; color:#fff; padding:2px 12px; border-radius:30px; font-size:0.7rem; font-weight:600; }
+        .admin-badge { background:var(--primary); color:#fff; padding:2px 12px; border-radius:30px; font-size:0.7rem; font-weight:600; }
+        .chip { display:inline-block; padding:2px 12px; border-radius:20px; font-size:0.75rem; font-weight:500; background:#eef1f5; }
+        .hidden { display:none !important; }
+        @media (max-width:768px) {
+            .sidebar { position:fixed; transform:translateX(-100%); width:280px; height:100vh; z-index:200; box-shadow:0 0 40px rgba(0,0,0,0.1); }
+            .sidebar.open { transform:translateX(0); }
+            .header-left .menu-toggle { display:block; }
+            .content { padding:20px 16px; }
+            .header { padding:0 16px; }
+            .grid-2, .form-row { grid-template-columns:1fr; }
+            .header-right .user-badge span { display:none; }
+        }
+        .login-page { display:flex; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(145deg,#f4f7fa,#e8edf4); }
+        .login-box { background:#fff; border-radius:var(--radius); padding:40px 44px; width:100%; max-width:420px; box-shadow:0 20px 60px rgba(0,0,0,0.08); }
+        .login-box .brand { text-align:center; font-size:1.6rem; font-weight:700; color:var(--primary); margin-bottom:28px; }
+        .login-box .brand i { font-size:2.2rem; display:block; margin-bottom:6px; }
+        .login-box .btn { width:100%; justify-content:center; }
+        .login-box .alt { text-align:center; margin-top:16px; font-size:0.85rem; color:var(--text-light); }
+        .login-box .alt a { color:var(--primary); font-weight:600; }
+        .login-box .default-creds { background:#f8fafc; border-radius:8px; padding:12px; margin-bottom:20px; font-size:0.8rem; text-align:center; color:var(--text-light); border:1px dashed #dde2e9; }
+        .login-box .default-creds strong { color:var(--text); }
+    </style>
+</head>
+<body>
+    <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
+    <!-- SIDEBAR (same as index) -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
+        <nav class="sidebar-nav">
+            <div class="nav-label">Main</div>
+            <a href="index.html"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="dispatch.html"><i class="fas fa-truck"></i> Dispatch</a>
+            <a href="receive.html"><i class="fas fa-arrow-down"></i> Receive</a>
+            <a href="warehouse.html"><i class="fas fa-warehouse"></i> Warehouse</a>
+            <a href="pharmacy-shelf.html"><i class="fas fa-shelves"></i> Pharmacy Shelf</a>
+            <a href="branches.html"><i class="fas fa-store"></i> Branches</a>
+            <div class="nav-label">Supply</div>
+            <a href="suppliers.html"><i class="fas fa-handshake"></i> Suppliers</a>
+            <a href="request-shipment.html"><i class="fas fa-paper-plane"></i> Request Shipment</a>
+            <a href="returns.html"><i class="fas fa-undo"></i> Returns</a>
+            <div class="nav-label">Finance</div>
+            <a href="invoice-repository.html"><i class="fas fa-file-invoice"></i> Invoice Repository</a>
+            <a href="outstanding-invoices.html"><i class="fas fa-clock"></i> Outstanding (Invoice)</a>
+            <a href="outstanding-shipments.html"><i class="fas fa-clock"></i> Outstanding (Shipment)</a>
+            <a href="reconciliation.html"><i class="fas fa-balance-scale"></i> Reconciliation</a>
+            <a href="ledger.html"><i class="fas fa-book"></i> Ledger</a>
+            <div class="nav-label">Admin</div>
+            <a href="users.html"><i class="fas fa-users"></i> Users</a>
+            <a href="admin.html"><i class="fas fa-user-shield"></i> Admin</a>
+            <a href="super-admin.html"><i class="fas fa-crown"></i> Super Admin</a>
+            <a href="system-configurations.html"><i class="fas fa-cog"></i> System Config</a>
+            <div class="nav-label">Reporting</div>
+            <a href="reports.html"><i class="fas fa-chart-bar"></i> Reports</a>
+            <a href="data.html"><i class="fas fa-database"></i> Data</a>
+            <a href="notifications.html"><i class="fas fa-bell"></i> Notifications</a>
+            <div class="nav-label">Other</div>
+            <a href="profile.html" class="active"><i class="fas fa-user-circle"></i> Profile</a>
+            <a href="sheet.html"><i class="fas fa-table"></i> Sheet</a>
+            <a href="authentication.html"><i class="fas fa-lock"></i> Authentication</a>
+            <a href="reset.html"><i class="fas fa-key"></i> Reset</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+        <header class="header">
+            <div class="header-left"><button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button><h2 id="pageTitle">Profile</h2></div>
+            <div class="header-right"><button class="notif-btn" id="notifIcon"><i class="fas fa-bell"></i><span class="dot" id="notifDot"></span></button><div class="user-badge"><i class="fas fa-user-circle"></i><span id="userDisplay">User</span></div></div>
+        </header>
+        <div class="content">
+            <div class="page-header"><h2>Profile</h2></div>
+            <div class="card">
+                <div class="form-row">
+                    <div class="form-group"><label>Display Name</label><input id="profileName" /></div>
+                    <div class="form-group"><label>Email</label><input id="profileEmail" disabled /></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Role</label><input id="profileRole" disabled /></div>
+                    <div class="form-group"><label>Branch</label><input id="profileBranch" /></div>
+                </div>
+                <button class="btn btn-primary" id="updateProfileBtn"><i class="fas fa-save"></i> Update Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN (hidden) -->
+    <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
+        <div class="login-box">
+            <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
+            <div class="default-creds"><strong>Default Admin:</strong> admin@drugsnmore.com / admin123</div>
+            <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
+            <div class="form-group"><label>Email</label><input id="loginEmail" placeholder="user@example.com" value="admin@drugsnmore.com" /></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" value="admin123" /></div>
+            <button class="btn btn-primary" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+            <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
+            <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey:"AIzaSyCA9vHsVV841oZue9McbU14yyZtyDptT3Q", authDomain:"drugs-n--more.firebaseapp.com", projectId:"drugs-n--more", storageBucket:"drugs-n--more.firebasestorage.app", messagingSenderId:"1027965446929", appId:"1:1027965446929:web:eec971b5e458baff813ab0", measurementId:"G-HV3GYSY6CK" };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        let currentUser = null;
+        const $ = id => document.getElementById(id);
+        const toast = $('toast');
+        const toastMsg = $('toastMsg');
+        function showToast(msg, type='success') { toast.className='toast show '+type; toastMsg.textContent=msg; const icon=toast.querySelector('i'); icon.className=type==='success'?'fas fa-check-circle':type==='error'?'fas fa-exclamation-circle':'fas fa-info-circle'; clearTimeout(toast._hide); toast._hide=setTimeout(()=>toast.classList.remove('show'),4000); }
+        function showLogin() { $('loginPage').style.display='flex'; document.querySelector('.main').style.display='none'; document.querySelector('.sidebar').style.display='none'; }
+        function showApp() { $('loginPage').style.display='none'; document.querySelector('.main').style.display='flex'; document.querySelector('.sidebar').style.display='flex'; }
+        async function loadProfile() {
+            if (!currentUser) return;
+            try {
+                const doc = await db.collection('users').doc(currentUser.uid).get();
+                if (doc.exists) {
+                    const d = doc.data();
+                    $('profileName').value = d.displayName || d.email || '';
+                    $('profileEmail').value = d.email || currentUser.email || '';
+                    $('profileRole').value = d.role || 'user';
+                    $('profileBranch').value = d.branch || '';
+                }
+            } catch(e) { console.warn(e); }
+        }
+        async function loadNotifications() {
+            if (!currentUser) return;
+            try {
+                const snap = await db.collection('notifications').where('userId', '==', currentUser.uid).orderBy('createdAt', 'desc').limit(20).get();
+                const unread = snap.docs.filter(d => !d.data().read).length;
+                $('notifDot').style.display = unread > 0 ? 'block' : 'none';
+            } catch(e) { console.warn(e); }
+        }
+        $('notifIcon').addEventListener('click', () => location.href='notifications.html');
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('userDisplay').textContent = user.displayName || user.email || 'User';
+                showApp();
+                try {
+                    const doc = await db.collection('users').doc(user.uid).get();
+                    if (doc.exists) currentUserRole = doc.data().role || 'user';
+                    else { await db.collection('users').doc(user.uid).set({ email: user.email, role: 'user', displayName: user.displayName || user.email, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); currentUserRole = 'user'; }
+                } catch(e) { currentUserRole = 'user'; }
+                const isSuper = currentUserRole === 'superadmin';
+                document.querySelectorAll('.sidebar-nav a[href="super-admin.html"]').forEach(el => el.style.display = isSuper ? 'flex' : 'none');
+                document.querySelectorAll('.sidebar-nav a[href="system-configurations.html"]').forEach(el => el.style.display = isSuper ? 'flex' : 'none');
+                loadProfile();
+                loadNotifications();
+                showToast('Welcome, ' + (user.displayName || user.email), 'success');
+            } else {
+                currentUser = null;
+                showLogin();
+            }
+        });
+        $('updateProfileBtn').addEventListener('click', async () => {
+            if (!currentUser) return;
+            const name = $('profileName').value.trim();
+            const branch = $('profileBranch').value.trim();
+            try {
+                await db.collection('users').doc(currentUser.uid).update({ displayName: name, branch: branch, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                if (currentUser.displayName !== name) await currentUser.updateProfile({ displayName: name });
+                showToast('Profile updated!');
+                document.getElementById('userDisplay').textContent = name || currentUser.email;
+            } catch(e) { showToast(e.message, 'error'); }
+        });
+        // Login handlers (same as index)
+        $('loginBtn').addEventListener('click', async () => {
+            const email = $('loginEmail').value.trim();
+            const pass = $('loginPassword').value;
+            const errEl = $('loginError');
+            errEl.style.display = 'none';
+            if (!email || !pass) { errEl.textContent = 'Please fill in all fields.'; errEl.style.display='block'; return; }
+            try { await auth.signInWithEmailAndPassword(email, pass); }
+            catch(e) { errEl.textContent = e.message; errEl.style.display='block'; }
+        });
+        $('loginPassword').addEventListener('keydown', e => { if(e.key==='Enter') $('loginBtn').click(); });
+        $('loginEmail').addEventListener('keydown', e => { if(e.key==='Enter') $('loginBtn').click(); });
+        $('goToRegister').addEventListener('click', e => {
+            e.preventDefault();
+            const email = prompt('Enter email to register:');
+            if (!email) return;
+            const pass = prompt('Enter password:');
+            if (!pass) return;
+            auth.createUserWithEmailAndPassword(email, pass).then(() => showToast('User registered!')).catch(e => showToast(e.message, 'error'));
+        });
+        $('goToResetPass').addEventListener('click', e => {
+            e.preventDefault();
+            const email = prompt('Enter your email to reset password:');
+            if (!email) return;
+            auth.sendPasswordResetEmail(email).then(() => showToast('Reset link sent!')).catch(e => showToast(e.message, 'error'));
+        });
+        $('logoutBtn').addEventListener('click', e => { e.preventDefault(); auth.signOut(); });
+        document.getElementById('menuToggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
+    </script>
+</body>
+</html>
