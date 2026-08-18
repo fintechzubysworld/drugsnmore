@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Login · Drugs n' More</title><link rel="stylesheet" href="common.css" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" /></head>
-<body style="background:#f4f7fa;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+<body style="background:#f4f7fa;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;">
     <div class="login-box" style="margin:auto;">
         <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
         <div class="default-creds"><strong>Default Admin:</strong> admin@drugsnmore.com / admin123</div>
@@ -12,11 +12,11 @@
         <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
         <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
     </div>
+    <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
     <script src="common.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             attachLoginHandlers();
-            // if already logged in, redirect to index
             auth.onAuthStateChanged(user => { if (user) location.href = 'index.html'; });
         });
     </script>
