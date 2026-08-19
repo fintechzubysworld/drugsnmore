@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>System Configurations · Drugs n' More</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="common.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <style>
@@ -59,32 +59,6 @@
         .auth-box .btn {
             width: 100%;
             justify-content: center;
-        }
-        .locked-overlay {
-            position: relative;
-            pointer-events: none;
-            opacity: 0.5;
-        }
-        .locked-overlay::after {
-            content: "🔒 Locked";
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--text-light);
-            background: rgba(255,255,255,0.8);
-            padding: 8px 20px;
-            border-radius: 30px;
-            border: 2px dashed #dde2e9;
-        }
-        .unlocked .locked-overlay::after {
-            display: none;
-        }
-        .unlocked .locked-overlay {
-            pointer-events: auto;
-            opacity: 1;
         }
     </style>
 </head>
@@ -299,6 +273,37 @@
                             <input id="cfgSessionTimeout" type="number" value="30" min="5" />
                         </div>
                     </div>
+
+                    <!-- 🔥 NEW: Currency Settings -->
+                    <div class="config-section" style="border-color: var(--primary);">
+                        <div class="section-title"><i class="fas fa-coins"></i> Currency Settings</div>
+                        <div class="form-group">
+                            <label>Display Currency</label>
+                            <select id="cfgCurrency">
+                                <option value="$">$ (USD)</option>
+                                <option value="€">€ (Euro)</option>
+                                <option value="£">£ (GBP)</option>
+                                <option value="¥">¥ (JPY)</option>
+                                <option value="₦">₦ (NGN)</option>
+                                <option value="R$">R$ (BRL)</option>
+                                <option value="₹">₹ (INR)</option>
+                                <option value="A$">A$ (AUD)</option>
+                                <option value="C$">C$ (CAD)</option>
+                                <option value="CHF">CHF (Swiss Franc)</option>
+                                <option value="₿">₿ (Bitcoin)</option>
+                                <option value="S$">S$ (SGD)</option>
+                                <option value="HK$">HK$ (HKD)</option>
+                                <option value="NZ$">NZ$ (NZD)</option>
+                                <option value="kr">kr (SEK)</option>
+                                <option value="₩">₩ (KRW)</option>
+                                <option value="₽">₽ (RUB)</option>
+                                <option value="R">R (ZAR)</option>
+                                <option value="د.إ">د.إ (AED)</option>
+                                <option value="ج.م">ج.م (EGP)</option>
+                            </select>
+                            <span style="font-size:0.75rem;color:var(--text-light);">This currency symbol will be used throughout the application.</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Data Wipe Section -->
@@ -308,25 +313,20 @@
                         <strong>Data Wipe:</strong> This will permanently delete ALL data from the database. This action cannot be undone.
                         Only proceed if you are absolutely sure.
                     </p>
-                    <div style="display:flex;gap:16px;flex-wrap:wrap;">
-                        <button class="btn btn-danger" id="cfgWipeBtn"><i class="fas fa-trash-alt"></i> Wipe All Data</button>
-                        <span style="font-size:0.8rem;color:var(--text-light);align-self:center;">
-                            Requires confirmation
-                        </span>
-                    </div>
+                    <button class="btn btn-danger" id="cfgWipeBtn"><i class="fas fa-trash-alt"></i> Wipe All Data</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- LOGIN OVERLAY (hidden by default) -->
+    <!-- LOGIN OVERLAY -->
     <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
         <div class="login-box">
             <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
-            <div class="default-creds"><strong>Default Admin:</strong> admin@drugsnmore.com / admin123</div>
+            <div class="default-creds"><strong>Default Super Admin:</strong> superadmin@drugsnmore.com / superadmin123</div>
             <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
-            <div class="form-group"><label>Email</label><input id="loginEmail" placeholder="user@example.com" value="admin@drugsnmore.com" /></div>
-            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" value="admin123" /></div>
+            <div class="form-group"><label>Email</label><input id="loginEmail" placeholder="user@example.com" value="superadmin@drugsnmore.com" /></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" value="superadmin123" /></div>
             <button class="btn btn-primary" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
             <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
             <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
@@ -338,18 +338,14 @@
         document.addEventListener('DOMContentLoaded', function() {
             let isAuthenticated = false;
 
-            // Initialize auth
             initAuth((user) => {
-                // Check if user is super admin
                 if (currentUserRole !== 'superadmin') {
-                    // Show access denied message and hide everything
                     document.getElementById('configContent').innerHTML = `
                         <div class="page-header"><h2>Access Denied</h2></div>
                         <div class="card" style="text-align:center;padding:40px;">
                             <i class="fas fa-ban" style="font-size:3rem;color:#e74c3c;display:block;margin-bottom:16px;"></i>
                             <h3>Super Admin Only</h3>
                             <p style="color:var(--text-light);">You do not have permission to access system configurations.</p>
-                            <p style="color:var(--text-light);margin-top:8px;">This page is restricted to Super Administrators.</p>
                             <button class="btn btn-outline" onclick="location.href='index.html'" style="margin-top:16px;">
                                 <i class="fas fa-arrow-left"></i> Go to Dashboard
                             </button>
@@ -357,15 +353,11 @@
                     `;
                     return;
                 }
-
-                // Super admin - show auth card
-                // We keep auth card visible until authenticated
-                // Also load current config values
                 loadConfigValues();
             });
             attachLoginHandlers();
 
-            // Authenticate button
+            // Authenticate
             document.getElementById('configAuthBtn').addEventListener('click', async function() {
                 const pass = document.getElementById('configAuthPass').value;
                 const errorEl = document.getElementById('authError');
@@ -376,18 +368,15 @@
                     return;
                 }
                 try {
-                    // Re-authenticate
                     const credential = firebase.auth.EmailAuthProvider.credential(
                         currentUser.email,
                         pass
                     );
                     await currentUser.reauthenticateWithCredential(credential);
-                    // Success
                     isAuthenticated = true;
                     document.getElementById('authCard').style.display = 'none';
                     document.getElementById('configSections').style.display = 'block';
                     showToast('Authentication successful!', 'success');
-                    // Load config values again (in case we need fresh)
                     loadConfigValues();
                 } catch (e) {
                     errorEl.textContent = 'Invalid password. Please try again.';
@@ -396,52 +385,41 @@
                 }
             });
 
-            // Allow Enter key on password field
             document.getElementById('configAuthPass').addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') document.getElementById('configAuthBtn').click();
             });
 
-            // Load configuration values from Firestore
+            // Load config values
             async function loadConfigValues() {
                 try {
                     const doc = await db.collection('config').doc('system').get();
                     if (doc.exists) {
                         const d = doc.data();
-                        // Profile
                         document.getElementById('cfgProfileName').value = d.profileName || '';
                         document.getElementById('cfgProfileEmail').value = d.profileEmail || '';
-                        // Dashboard
                         document.getElementById('cfgDashboardView').value = d.dashboardView || 'overview';
-                        // User
                         document.getElementById('cfgDefaultRole').value = d.defaultRole || 'user';
-                        // Admin
                         document.getElementById('cfgAdmin2FA').value = d.admin2FA || 'no';
                         document.getElementById('cfgAdminTimeout').value = d.adminTimeout || '60';
-                        // Warehouse
                         document.getElementById('cfgWarehouseLoc').value = d.warehouseLoc || 'Main Warehouse';
                         document.getElementById('cfgWarehouseThreshold').value = d.warehouseThreshold || '10';
-                        // Shelf
                         document.getElementById('cfgShelfDefault').value = d.shelfDefault || 'A-01';
                         document.getElementById('cfgShelfReorder').value = d.shelfReorder || '5';
-                        // Report
                         document.getElementById('cfgReportPeriod').value = d.reportPeriod || 'monthly';
                         document.getElementById('cfgAutoReports').value = d.autoReports || 'yes';
-                        // Data
                         document.getElementById('cfgAutoBackup').value = d.autoBackup || 'on';
                         document.getElementById('cfgBackupFreq').value = d.backupFreq || 'weekly';
-                        // Reset
                         document.getElementById('cfgResetFreq').value = d.resetFreq || 'never';
                         document.getElementById('cfgPassExpiry').value = d.passExpiry || '90';
-                        // Auth
                         document.getElementById('cfg2FA').value = d.twoFA || 'no';
                         document.getElementById('cfgSessionTimeout').value = d.sessionTimeout || '30';
+                        // Currency
+                        document.getElementById('cfgCurrency').value = d.currency || '$';
                     } else {
-                        // Set defaults if no config doc
                         setDefaultConfig();
                     }
                 } catch (e) {
                     console.warn('Error loading config:', e);
-                    // Set defaults if error
                     setDefaultConfig();
                 }
             }
@@ -465,9 +443,10 @@
                 document.getElementById('cfgPassExpiry').value = '90';
                 document.getElementById('cfg2FA').value = 'no';
                 document.getElementById('cfgSessionTimeout').value = '30';
+                document.getElementById('cfgCurrency').value = '$';
             }
 
-            // Save All Settings
+            // Save All Settings (including currency)
             document.getElementById('saveAllConfigBtn').addEventListener('click', async function() {
                 if (!isAuthenticated) {
                     showToast('Please authenticate first', 'error');
@@ -492,11 +471,14 @@
                     passExpiry: parseInt(document.getElementById('cfgPassExpiry').value) || 90,
                     twoFA: document.getElementById('cfg2FA').value,
                     sessionTimeout: parseInt(document.getElementById('cfgSessionTimeout').value) || 30,
+                    currency: document.getElementById('cfgCurrency').value, // 🔥 Currency saved here
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 try {
                     await db.collection('config').doc('system').set(data, { merge: true });
-                    showToast('All settings saved successfully!', 'success');
+                    // Reload currency globally
+                    await loadCurrency();
+                    showToast('All settings saved! Currency updated: ' + currentCurrency, 'success');
                 } catch (e) {
                     showToast('Error saving: ' + e.message, 'error');
                 }
@@ -519,19 +501,6 @@
                 if (!confirm('FINAL WARNING: This action is IRREVERSIBLE. Click OK to proceed.')) return;
 
                 try {
-                    // List all collections to wipe
-                    const collections = [
-                        'dispatches', 'receives', 'warehouse', 'shelf', 'branches',
-                        'suppliers', 'requests', 'returns', 'invoices', 'reconciliations',
-                        'ledger', 'users', 'notifications', 'reports', 'sheetTemplates',
-                        'config' // we might keep config? But we'll wipe it too, but keep system config? Let's keep config.
-                    ];
-                    // Actually, we should not wipe the config collection, because we want to keep system settings.
-                    // But data wipe is for user data, not system config. We'll exclude 'config' and maybe 'users'? 
-                    // But they said "Data Wipe" – we'll wipe all collections except 'config' and maybe 'users'? 
-                    // I'll wipe all except 'config' and 'users' (users are part of data, but we might keep admin? 
-                    // Let's wipe all data collections: dispatch, receive, warehouse, shelf, branches, suppliers, 
-                    // requests, returns, invoices, reconciliations, ledger, notifications, reports, sheetTemplates.
                     const wipeCollections = [
                         'dispatches', 'receives', 'warehouse', 'shelf', 'branches',
                         'suppliers', 'requests', 'returns', 'invoices', 'reconciliations',
