@@ -8,7 +8,11 @@ const firebaseConfig = {
     appId: "1:1027965446929:web:eec971b5e458baff813ab0",
     measurementId: "G-HV3GYSY6CK"
 };
-firebase.initializeApp(firebaseConfig);
+
+// Check if Firebase is already initialized (in case of multiple calls)
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const auth = firebase.auth();
 const db = firebase.firestore();
 
@@ -21,6 +25,7 @@ const toast = $('toast');
 const toastMsg = $('toastMsg');
 
 function showToast(msg, type = 'success') {
+    if (!toast) return;
     toast.className = 'toast show ' + type;
     toastMsg.textContent = msg;
     const icon = toast.querySelector('i');
@@ -30,42 +35,49 @@ function showToast(msg, type = 'success') {
 }
 
 function showLogin() {
-    $('loginPage').style.display = 'flex';
-    document.querySelector('.main').style.display = 'none';
-    document.querySelector('.sidebar').style.display = 'none';
+    const loginPage = $('loginPage');
+    if (!loginPage) return;
+    loginPage.style.display = 'flex';
+    const main = document.querySelector('.main');
+    const sidebar = document.querySelector('.sidebar');
+    if (main) main.style.display = 'none';
+    if (sidebar) sidebar.style.display = 'none';
 }
 
 function showApp() {
-    $('loginPage').style.display = 'none';
-    document.querySelector('.main').style.display = 'flex';
-    document.querySelector('.sidebar').style.display = 'flex';
+    const loginPage = $('loginPage');
+    if (loginPage) loginPage.style.display = 'none';
+    const main = document.querySelector('.main');
+    const sidebar = document.querySelector('.sidebar');
+    if (main) main.style.display = 'flex';
+    if (sidebar) sidebar.style.display = 'flex';
 }
 
-// Seed default admin if no users exist
+// 🔥 UPDATED SEED ADMIN with new credentials
 async function seedAdmin() {
     try {
         const snap = await db.collection('users').limit(1).get();
-        if (!snap.empty) return;
-        const cred = await auth.createUserWithEmailAndPassword('admin@drugsnmore.com', 'admin123');
-        await cred.user.updateProfile({ displayName: 'Admin' });
+        if (!snap.empty) return; // users exist, skip
+        const cred = await auth.createUserWithEmailAndPassword('superadmin@drugsnmore.com', 'superadmin123');
+        await cred.user.updateProfile({ displayName: 'Super Admin' });
         await db.collection('users').doc(cred.user.uid).set({
-            email: 'admin@drugsnmore.com',
+            email: 'superadmin@drugsnmore.com',
             role: 'superadmin',
-            displayName: 'Admin',
+            displayName: 'Super Admin',
             branch: 'Headquarters',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        console.log('✅ Default admin created');
+        console.log('✅ Default super admin created: superadmin@drugsnmore.com / superadmin123');
         await auth.signOut();
     } catch (e) { console.warn('Seed error:', e.message); }
 }
 
-// Auth state listener – call this in each page
 function initAuth(callback) {
     auth.onAuthStateChanged(async (user) => {
         if (user) {
             currentUser = user;
-            document.getElementById('userDisplay').textContent = user.displayName || user.email || 'User';
+            const displayEl = document.getElementById('userDisplay');
+            if (displayEl) displayEl.textContent = user.displayName || user.email || 'User';
             showApp();
             try {
                 const doc = await db.collection('users').doc(user.uid).get();
@@ -79,12 +91,13 @@ function initAuth(callback) {
                     });
                     currentUserRole = 'user';
                 }
-            } catch (e) { currentUserRole = 'user'; }
-            // show/hide super admin links
+            } catch (e) { 
+                console.warn('Role fetch error:', e);
+                currentUserRole = 'user'; 
+            }
             const isSuper = currentUserRole === 'superadmin';
             document.querySelectorAll('.sidebar-nav a[href="super-admin.html"]').forEach(el => el.style.display = isSuper ? 'flex' : 'none');
             document.querySelectorAll('.sidebar-nav a[href="system-configurations.html"]').forEach(el => el.style.display = isSuper ? 'flex' : 'none');
-            // load notifications count
             loadNotificationCount();
             if (callback) callback(user);
         } else {
@@ -96,17 +109,20 @@ function initAuth(callback) {
     });
 }
 
-// Load notification count (for dot)
 async function loadNotificationCount() {
     if (!currentUser) return;
     try {
-        const snap = await db.collection('notifications').where('userId', '==', currentUser.uid).where('read', '==', false).get();
+        const snap = await db.collection('notifications')
+            .where('userId', '==', currentUser.uid)
+            .where('read', '==', false)
+            .get();
         const dot = document.getElementById('notifDot');
         if (dot) dot.style.display = snap.size > 0 ? 'block' : 'none';
-    } catch (e) { console.warn(e); }
+    } catch (e) {
+        console.warn('Notification count error:', e.message);
+    }
 }
 
-// Common login handlers (attach after login page is rendered)
 function attachLoginHandlers() {
     const loginBtn = $('loginBtn');
     const loginEmail = $('loginEmail');
@@ -149,19 +165,17 @@ function attachLoginHandlers() {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', e => { e.preventDefault(); auth.signOut(); });
     }
-    // menu toggle
     const menuToggle = document.getElementById('menuToggle');
     if (menuToggle) {
         menuToggle.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
     }
-    // notification icon
     const notifIcon = document.getElementById('notifIcon');
     if (notifIcon) {
         notifIcon.addEventListener('click', () => location.href = 'notifications.html');
     }
 }
 
-// Export common functions
+// Export global functions
 window.showToast = showToast;
 window.db = db;
 window.auth = auth;
