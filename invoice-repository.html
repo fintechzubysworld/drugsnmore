@@ -4,9 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Invoice Repository · Drugs n' More</title>
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- SheetJS for Excel import -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="common.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <style>
@@ -47,6 +50,81 @@
         }
         .modal .form-group label {
             font-weight: 600;
+        }
+        .print-invoice {
+            background: #fff;
+            padding: 30px 40px;
+            max-width: 800px;
+            margin: 0 auto;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        .print-invoice .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+        .print-invoice .header h2 {
+            color: var(--primary);
+        }
+        .print-invoice .invoice-details {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+        .print-invoice table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+        }
+        .print-invoice table th {
+            background: #f8fafc;
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 2px solid #dde2e9;
+        }
+        .print-invoice table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eef1f5;
+        }
+        .print-invoice .totals {
+            margin-top: 16px;
+            text-align: right;
+            font-weight: 600;
+        }
+        .print-invoice .totals div {
+            padding: 4px 0;
+        }
+        .print-invoice .status-badge {
+            display: inline-block;
+            padding: 4px 16px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .print-invoice { padding: 20px; }
+            .print-invoice .header { border-bottom-color: #000; }
+        }
+        .import-area {
+            border: 2px dashed #dde2e9;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 12px;
+        }
+        .import-area:hover {
+            border-color: var(--primary);
+            background: #f8fafc;
+        }
+        .import-area input[type="file"] {
+            display: none;
         }
     </style>
 </head>
@@ -128,7 +206,7 @@
         </div>
     </div>
 
-    <!-- LOGIN OVERLAY (hidden by default) -->
+    <!-- LOGIN OVERLAY -->
     <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
         <div class="login-box">
             <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
@@ -142,7 +220,7 @@
         </div>
     </div>
 
-    <!-- MODAL for New Invoice with sheet-style grid -->
+    <!-- NEW INVOICE MODAL (with import) -->
     <div class="modal-overlay" id="modalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999;">
         <div class="modal" style="background:#fff;border-radius:14px;max-width:900px;width:95%;max-height:90vh;overflow-y:auto;padding:28px 32px;">
             <div class="modal-header">
@@ -150,13 +228,20 @@
                 <button class="close" id="modalClose">&times;</button>
             </div>
             <div id="modalBody">
-                <!-- Supplier field -->
+                <!-- Supplier -->
                 <div class="form-group">
                     <label>Supplier</label>
                     <input id="invSupplier" placeholder="Supplier name" />
                 </div>
 
-                <!-- Sheet-style grid -->
+                <!-- Import area -->
+                <div class="import-area" id="importArea">
+                    <i class="fas fa-upload" style="font-size:1.5rem;display:block;margin-bottom:8px;color:var(--primary);"></i>
+                    <p style="color:var(--text-light);">Click to import CSV, Excel, or JSON</p>
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.json" />
+                </div>
+
+                <!-- Sheet grid -->
                 <div style="margin:16px 0;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                         <strong>Invoice Items</strong>
@@ -177,9 +262,7 @@
                                     <th><i class="fas fa-trash"></i></th>
                                 </tr>
                             </thead>
-                            <tbody id="invoiceSheetBody">
-                                <!-- Rows will be added here -->
-                            </tbody>
+                            <tbody id="invoiceSheetBody"></tbody>
                             <tfoot id="invoiceSheetFoot" class="totals-row">
                                 <tr>
                                     <td colspan="5" style="text-align:right;">Totals</td>
@@ -193,7 +276,7 @@
                     </div>
                 </div>
 
-                <!-- Status and Save -->
+                <!-- Status & Save -->
                 <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;">
                     <div style="flex:1;">
                         <div class="form-group">
@@ -212,6 +295,22 @@
         </div>
     </div>
 
+    <!-- VIEW INVOICE MODAL (printable) -->
+    <div class="modal-overlay" id="viewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:1000;">
+        <div class="modal" style="background:#fff;border-radius:14px;max-width:900px;width:95%;max-height:95vh;overflow-y:auto;padding:20px 24px;">
+            <div class="modal-header no-print">
+                <h3>Invoice Details</h3>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-primary" id="printInvoiceBtn"><i class="fas fa-print"></i> Print</button>
+                    <button class="close" id="viewModalClose">&times;</button>
+                </div>
+            </div>
+            <div id="viewModalBody">
+                <!-- Invoice content will be rendered here -->
+            </div>
+        </div>
+    </div>
+
     <script src="common.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -226,6 +325,14 @@
             const sheetBody = document.getElementById('invoiceSheetBody');
             const addRowBtn = document.getElementById('addInvoiceRowBtn');
             const saveBtn = document.getElementById('saveInvBtn');
+            const importArea = document.getElementById('importArea');
+            const fileInput = document.getElementById('fileInput');
+
+            // View modal
+            const viewModal = document.getElementById('viewModal');
+            const viewClose = document.getElementById('viewModalClose');
+            const printBtn = document.getElementById('printInvoiceBtn');
+            const viewBody = document.getElementById('viewModalBody');
 
             // --- Initialize auth ---
             initAuth(() => {
@@ -233,15 +340,14 @@
             });
             attachLoginHandlers();
 
-            // --- Modal open/close ---
+            // --- New Invoice modal open ---
             if (newBtn) {
                 newBtn.addEventListener('click', () => {
                     modal.style.display = 'flex';
                     document.getElementById('invSupplier').value = '';
                     document.getElementById('invStatus').value = 'pending';
-                    // Start with one empty row
                     invoiceRows = [];
-                    addInvoiceRow(); // add first row
+                    addInvoiceRow(); // first row
                     renderInvoiceSheet();
                 });
             }
@@ -252,6 +358,148 @@
                 modal.addEventListener('click', (e) => {
                     if (e.target === modal) modal.style.display = 'none';
                 });
+            }
+
+            // --- View modal close ---
+            if (viewClose) {
+                viewClose.addEventListener('click', () => { viewModal.style.display = 'none'; });
+            }
+            if (viewModal) {
+                viewModal.addEventListener('click', (e) => {
+                    if (e.target === viewModal) viewModal.style.display = 'none';
+                });
+            }
+
+            // --- Print invoice ---
+            if (printBtn) {
+                printBtn.addEventListener('click', () => {
+                    window.print();
+                });
+            }
+
+            // --- Import file ---
+            if (importArea) {
+                importArea.addEventListener('click', () => {
+                    fileInput.click();
+                });
+            }
+            if (fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    const file = this.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    const fileName = file.name.toLowerCase();
+
+                    if (fileName.endsWith('.json')) {
+                        reader.onload = function(event) {
+                            try {
+                                const data = JSON.parse(event.target.result);
+                                if (Array.isArray(data)) {
+                                    importRows(data);
+                                } else {
+                                    showToast('JSON must be an array of rows', 'error');
+                                }
+                            } catch (err) {
+                                showToast('Invalid JSON: ' + err.message, 'error');
+                            }
+                            fileInput.value = '';
+                        };
+                        reader.readAsText(file);
+                    } else if (fileName.endsWith('.csv')) {
+                        reader.onload = function(event) {
+                            try {
+                                const text = event.target.result;
+                                const lines = text.split('\n').filter(line => line.trim());
+                                if (lines.length < 2) {
+                                    showToast('CSV must have header + data rows', 'error');
+                                    return;
+                                }
+                                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                                const rows = [];
+                                for (let i = 1; i < lines.length; i++) {
+                                    const values = lines[i].split(',').map(v => v.trim());
+                                    const row = {};
+                                    headers.forEach((h, idx) => {
+                                        row[h] = values[idx] || '';
+                                    });
+                                    rows.push(row);
+                                }
+                                importRows(rows);
+                            } catch (err) {
+                                showToast('Error parsing CSV: ' + err.message, 'error');
+                            }
+                            fileInput.value = '';
+                        };
+                        reader.readAsText(file);
+                    } else if (fileName.endsWith('.xlsx')) {
+                        reader.onload = function(event) {
+                            try {
+                                const data = new Uint8Array(event.target.result);
+                                const workbook = XLSX.read(data, { type: 'array' });
+                                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                                if (jsonData.length === 0) {
+                                    showToast('Excel file is empty', 'error');
+                                    return;
+                                }
+                                // Map headers to our fields
+                                const rows = jsonData.map(row => {
+                                    const keys = Object.keys(row);
+                                    const obj = {};
+                                    keys.forEach(k => {
+                                        const lower = k.toLowerCase();
+                                        if (lower.includes('code')) obj.code = row[k];
+                                        else if (lower.includes('item')) obj.item = row[k];
+                                        else if (lower.includes('packing') || lower.includes('pack')) obj.packingQty = parseFloat(row[k]) || 0;
+                                        else if (lower.includes('price')) obj.price = parseFloat(row[k]) || 0;
+                                        else if (lower.includes('qty') || lower.includes('quantity')) obj.qty = parseFloat(row[k]) || 0;
+                                        else if (lower.includes('discount')) obj.discount = parseFloat(row[k]) || 0;
+                                        else if (lower.includes('vat') || lower.includes('tax')) obj.vat = parseFloat(row[k]) || 0;
+                                    });
+                                    return obj;
+                                });
+                                importRows(rows);
+                            } catch (err) {
+                                showToast('Error parsing Excel: ' + err.message, 'error');
+                            }
+                            fileInput.value = '';
+                        };
+                        reader.readAsArrayBuffer(file);
+                    } else {
+                        showToast('Unsupported file format. Use .csv, .xlsx, or .json', 'error');
+                        fileInput.value = '';
+                    }
+                });
+            }
+
+            // --- Import rows into sheet ---
+            function importRows(data) {
+                if (!Array.isArray(data) || data.length === 0) {
+                    showToast('No rows to import', 'error');
+                    return;
+                }
+                // Clear existing rows and add imported ones
+                invoiceRows = [];
+                data.forEach((row, index) => {
+                    const item = row.item || row.Item || row.ITEM || '';
+                    if (!item) return; // skip rows without item name
+                    invoiceRows.push({
+                        id: rowIdCounter++,
+                        code: row.code || row.Code || row.CODE || '',
+                        item: item,
+                        packingQty: parseFloat(row.packingQty || row.packingqty || row.PackingQty || 0) || 0,
+                        price: parseFloat(row.price || row.Price || row.PRICE || 0) || 0,
+                        qty: parseFloat(row.qty || row.Qty || row.QTY || row.quantity || 0) || 0,
+                        discount: parseFloat(row.discount || row.Discount || row.DISCOUNT || 0) || 0,
+                        vat: parseFloat(row.vat || row.Vat || row.VAT || row.tax || 0) || 0
+                    });
+                });
+                if (invoiceRows.length === 0) {
+                    showToast('No valid rows found (missing "item" field)', 'error');
+                    return;
+                }
+                renderInvoiceSheet();
+                showToast(`Imported ${invoiceRows.length} rows!`);
             }
 
             // --- Add row ---
@@ -277,7 +525,7 @@
             function renderInvoiceSheet() {
                 if (!sheetBody) return;
                 if (invoiceRows.length === 0) {
-                    sheetBody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-light);padding:16px;">No items. Click "Add Row" to start.</td></tr>`;
+                    sheetBody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-light);padding:16px;">No items. Click "Add Row" or import a file.</td></tr>`;
                     updateInvoiceTotals();
                     return;
                 }
@@ -305,7 +553,7 @@
                 });
                 sheetBody.innerHTML = html;
 
-                // Attach input events to update row data and recalc
+                // Attach input events
                 sheetBody.querySelectorAll('input').forEach(input => {
                     input.addEventListener('input', function(e) {
                         const tr = this.closest('tr');
@@ -322,7 +570,6 @@
                         row.discount = parseFloat(tr.querySelector('.row-discount').value) || 0;
                         row.vat = parseFloat(tr.querySelector('.row-vat').value) || 0;
 
-                        // Recalculate amount
                         const amount = row.qty * row.price;
                         const discountAmt = amount * (row.discount / 100);
                         const vatAmt = (amount - discountAmt) * (row.vat / 100);
@@ -373,13 +620,10 @@
                         showToast('Supplier is required', 'error');
                         return;
                     }
-
-                    // Validate rows
                     if (invoiceRows.length === 0) {
                         showToast('Add at least one item', 'error');
                         return;
                     }
-                    // Check that each row has an item name and positive quantity
                     let hasError = false;
                     invoiceRows.forEach(row => {
                         if (!row.item.trim()) {
@@ -388,14 +632,13 @@
                             return;
                         }
                         if ((row.qty || 0) <= 0) {
-                            showToast('Quantity must be greater than 0 for all rows', 'error');
+                            showToast('Quantity must be greater than 0', 'error');
                             hasError = true;
                             return;
                         }
                     });
                     if (hasError) return;
 
-                    // Calculate totals
                     let subtotal = 0, totalDiscount = 0, totalVat = 0;
                     invoiceRows.forEach(row => {
                         const amount = row.qty * row.price;
@@ -406,7 +649,6 @@
                         totalVat += vat;
                     });
                     const grandTotal = subtotal - totalDiscount + totalVat;
-
                     const status = document.getElementById('invStatus').value;
 
                     try {
@@ -424,7 +666,7 @@
                             subtotal: subtotal,
                             totalDiscount: totalDiscount,
                             totalVat: totalVat,
-                            amount: grandTotal, // total amount
+                            amount: grandTotal,
                             status: status,
                             createdBy: currentUser?.uid || 'system',
                             createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -463,7 +705,7 @@
                                 <td><span class="badge ${statusClass}">${d.status || 'pending'}</span></td>
                                 <td>${d.createdAt?.toDate?.()?.toLocaleDateString() || '—'}</td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline" onclick="viewInvoice('${doc.id}')">View</button>
+                                    <button class="btn btn-sm btn-outline" onclick="viewInvoice('${doc.id}')"><i class="fas fa-eye"></i> View</button>
                                     ${d.status === 'pending' ? `<button class="btn btn-sm btn-success" onclick="markPaid('${doc.id}')"><i class="fas fa-check"></i> Mark Paid</button>` : ''}
                                 </td>
                             </tr>
@@ -471,32 +713,100 @@
                     });
                     tbody.innerHTML = html;
 
-                    // View & Mark Paid functions
+                    // ---- View Invoice (printable) ----
                     window.viewInvoice = async (id) => {
                         try {
                             const doc = await db.collection('invoices').doc(id).get();
                             if (!doc.exists) return showToast('Not found', 'error');
                             const d = doc.data();
-                            let itemsText = '';
+
+                            // Build printable invoice
+                            let itemsHtml = '';
                             if (d.items && Array.isArray(d.items)) {
-                                d.items.forEach((item, i) => {
-                                    itemsText += `\n${i+1}. ${item.item || '—'} (${item.qty||0} x $${(item.price||0).toFixed(2)})`;
+                                d.items.forEach((item, idx) => {
+                                    const amount = (item.qty || 0) * (item.price || 0);
+                                    const discount = amount * ((item.discount || 0) / 100);
+                                    const vat = (amount - discount) * ((item.vat || 0) / 100);
+                                    const total = amount - discount + vat;
+                                    itemsHtml += `
+                                        <tr>
+                                            <td>${item.code || ''}</td>
+                                            <td>${item.item || '—'}</td>
+                                            <td style="text-align:center;">${item.packingQty || 0}</td>
+                                            <td style="text-align:right;">$${(item.price || 0).toFixed(2)}</td>
+                                            <td style="text-align:center;">${item.qty || 0}</td>
+                                            <td style="text-align:right;">$${amount.toFixed(2)}</td>
+                                            <td style="text-align:center;">${item.discount || 0}%</td>
+                                            <td style="text-align:center;">${item.vat || 0}%</td>
+                                            <td style="text-align:right;">$${total.toFixed(2)}</td>
+                                        </tr>
+                                    `;
                                 });
                             }
-                            alert(
-                                `Invoice ${id.slice(0,6)}\n` +
-                                `Supplier: ${d.supplier || '—'}\n` +
-                                `Amount: $${(d.amount || 0).toFixed(2)}\n` +
-                                `Status: ${d.status || 'pending'}\n` +
-                                `Items: ${d.items ? d.items.length : 0}\n` +
-                                `Date: ${d.createdAt?.toDate?.()?.toLocaleString() || '—'}` +
-                                (itemsText ? `\n\nItems:${itemsText}` : '')
-                            );
+
+                            const statusBadge = d.status === 'paid' ? 'badge-success' : 'badge-warning';
+                            const viewHtml = `
+                                <div class="print-invoice" id="printArea">
+                                    <div class="header">
+                                        <h2><i class="fas fa-pills"></i> Drugs n' More</h2>
+                                        <div style="text-align:right;">
+                                            <div style="font-weight:600;">INVOICE</div>
+                                            <div style="font-size:0.8rem;color:var(--text-light);">#${id.slice(0,8).toUpperCase()}</div>
+                                        </div>
+                                    </div>
+                                    <div class="invoice-details">
+                                        <div>
+                                            <strong>Supplier:</strong> ${d.supplier || '—'}<br />
+                                            <strong>Date:</strong> ${d.createdAt?.toDate?.()?.toLocaleString() || '—'}<br />
+                                            <strong>Status:</strong> <span class="badge ${statusBadge}">${d.status || 'pending'}</span>
+                                        </div>
+                                        <div style="text-align:right;">
+                                            <strong>Invoice #:</strong> ${id.slice(0,8).toUpperCase()}<br />
+                                            <strong>Created by:</strong> ${d.createdBy || 'system'}
+                                        </div>
+                                    </div>
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Code</th>
+                                                <th>Item</th>
+                                                <th style="text-align:center;">Pkg</th>
+                                                <th style="text-align:right;">Price</th>
+                                                <th style="text-align:center;">Qty</th>
+                                                <th style="text-align:right;">Amount</th>
+                                                <th style="text-align:center;">Disc %</th>
+                                                <th style="text-align:center;">VAT %</th>
+                                                <th style="text-align:right;">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${itemsHtml || '<tr><td colspan="9" style="text-align:center;">No items</td></tr>'}
+                                        </tbody>
+                                    </table>
+                                    <div class="totals">
+                                        <div>Subtotal: $${(d.subtotal || 0).toFixed(2)}</div>
+                                        <div>Total Discount: -$${(d.totalDiscount || 0).toFixed(2)}</div>
+                                        <div>VAT: $${(d.totalVat || 0).toFixed(2)}</div>
+                                        <div style="font-size:1.2rem;color:var(--primary);">Grand Total: $${(d.amount || 0).toFixed(2)}</div>
+                                    </div>
+                                </div>
+                            `;
+                            viewBody.innerHTML = viewHtml;
+                            viewModal.style.display = 'flex';
+
+                            // Re-attach print if needed
+                            const printArea = document.getElementById('printArea');
+                            if (printBtn) {
+                                printBtn.onclick = function() {
+                                    window.print();
+                                };
+                            }
                         } catch (e) {
                             showToast(e.message, 'error');
                         }
                     };
 
+                    // ---- Mark Paid ----
                     window.markPaid = async (id) => {
                         if (!confirm('Mark this invoice as paid?')) return;
                         try {
