@@ -1,4 +1,4 @@
-// ===== common.js – shared Firebase init, auth, navigation, toast, and helpers =====
+// ===== common.js – shared Firebase init, auth, navigation, toast, currency, and helpers =====
 const firebaseConfig = {
     apiKey: "AIzaSyCA9vHsVV841oZue9McbU14yyZtyDptT3Q",
     authDomain: "drugs-n--more.firebaseapp.com",
@@ -9,7 +9,7 @@ const firebaseConfig = {
     measurementId: "G-HV3GYSY6CK"
 };
 
-// Check if Firebase is already initialized (in case of multiple calls)
+// Check if Firebase is already initialized
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
@@ -18,6 +18,7 @@ const db = firebase.firestore();
 
 let currentUser = null;
 let currentUserRole = 'user';
+let currentCurrency = '$'; // default currency symbol
 
 // DOM helpers
 const $ = id => document.getElementById(id);
@@ -53,11 +54,37 @@ function showApp() {
     if (sidebar) sidebar.style.display = 'flex';
 }
 
-// 🔥 UPDATED SEED ADMIN with new credentials
+// ----- CURRENCY FUNCTIONS -----
+async function loadCurrency() {
+    try {
+        const doc = await db.collection('config').doc('system').get();
+        if (doc.exists) {
+            const data = doc.data();
+            if (data.currency) {
+                currentCurrency = data.currency;
+                console.log('💱 Currency loaded:', currentCurrency);
+            }
+        }
+    } catch (e) {
+        console.warn('Error loading currency:', e);
+        // Keep default
+    }
+}
+
+function formatCurrency(amount) {
+    if (amount === undefined || amount === null) return currentCurrency + '0.00';
+    return currentCurrency + parseFloat(amount).toFixed(2);
+}
+
+function getCurrency() {
+    return currentCurrency;
+}
+
+// ----- SEED ADMIN -----
 async function seedAdmin() {
     try {
         const snap = await db.collection('users').limit(1).get();
-        if (!snap.empty) return; // users exist, skip
+        if (!snap.empty) return;
         const cred = await auth.createUserWithEmailAndPassword('superadmin@drugsnmore.com', 'superadmin123');
         await cred.user.updateProfile({ displayName: 'Super Admin' });
         await db.collection('users').doc(cred.user.uid).set({
@@ -67,11 +94,16 @@ async function seedAdmin() {
             branch: 'Headquarters',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+        // Also set default currency in config
+        await db.collection('config').doc('system').set({
+            currency: '$'
+        }, { merge: true });
         console.log('✅ Default super admin created: superadmin@drugsnmore.com / superadmin123');
         await auth.signOut();
     } catch (e) { console.warn('Seed error:', e.message); }
 }
 
+// ----- AUTH INIT -----
 function initAuth(callback) {
     auth.onAuthStateChanged(async (user) => {
         if (user) {
@@ -79,6 +111,10 @@ function initAuth(callback) {
             const displayEl = document.getElementById('userDisplay');
             if (displayEl) displayEl.textContent = user.displayName || user.email || 'User';
             showApp();
+            
+            // Load currency first
+            await loadCurrency();
+            
             try {
                 const doc = await db.collection('users').doc(user.uid).get();
                 if (doc.exists) currentUserRole = doc.data().role || 'user';
@@ -184,3 +220,7 @@ window.currentUserRole = () => currentUserRole;
 window.initAuth = initAuth;
 window.attachLoginHandlers = attachLoginHandlers;
 window.loadNotificationCount = loadNotificationCount;
+window.loadCurrency = loadCurrency;
+window.formatCurrency = formatCurrency;
+window.getCurrency = getCurrency;
+window.currentCurrency = () => currentCurrency;
