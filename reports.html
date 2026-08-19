@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reports · Drugs n' More</title>
+    <link rel="stylesheet" href="common.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+</head>
+<body>
+    <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
+        <nav class="sidebar-nav">
+            <div class="nav-label">Main</div>
+            <a href="index.html"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="dispatch.html"><i class="fas fa-truck"></i> Dispatch</a>
+            <a href="receive.html"><i class="fas fa-arrow-down"></i> Receive</a>
+            <a href="warehouse.html"><i class="fas fa-warehouse"></i> Warehouse</a>
+            <a href="pharmacy-shelf.html"><i class="fas fa-shelves"></i> Pharmacy Shelf</a>
+            <a href="branches.html"><i class="fas fa-store"></i> Branches</a>
+            <div class="nav-label">Supply</div>
+            <a href="suppliers.html"><i class="fas fa-handshake"></i> Suppliers</a>
+            <a href="request-shipment.html"><i class="fas fa-paper-plane"></i> Request Shipment</a>
+            <a href="returns.html"><i class="fas fa-undo"></i> Returns</a>
+            <div class="nav-label">Finance</div>
+            <a href="invoice-repository.html"><i class="fas fa-file-invoice"></i> Invoice Repository</a>
+            <a href="outstanding-invoices.html"><i class="fas fa-clock"></i> Outstanding (Invoice)</a>
+            <a href="outstanding-shipments.html"><i class="fas fa-clock"></i> Outstanding (Shipment)</a>
+            <a href="reconciliation.html"><i class="fas fa-balance-scale"></i> Reconciliation</a>
+            <a href="ledger.html"><i class="fas fa-book"></i> Ledger</a>
+            <div class="nav-label">Admin</div>
+            <a href="users.html"><i class="fas fa-users"></i> Users</a>
+            <a href="admin.html"><i class="fas fa-user-shield"></i> Admin</a>
+            <a href="super-admin.html"><i class="fas fa-crown"></i> Super Admin</a>
+            <a href="system-configurations.html"><i class="fas fa-cog"></i> System Config</a>
+            <div class="nav-label">Reporting</div>
+            <a href="reports.html" class="active"><i class="fas fa-chart-bar"></i> Reports</a>
+            <a href="data.html"><i class="fas fa-database"></i> Data</a>
+            <a href="notifications.html"><i class="fas fa-bell"></i> Notifications</a>
+            <div class="nav-label">Other</div>
+            <a href="profile.html"><i class="fas fa-user-circle"></i> Profile</a>
+            <a href="sheet.html"><i class="fas fa-table"></i> Sheet</a>
+            <a href="authentication.html"><i class="fas fa-lock"></i> Authentication</a>
+            <a href="reset.html"><i class="fas fa-key"></i> Reset</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+                <h2 id="pageTitle">Reports</h2>
+            </div>
+            <div class="header-right">
+                <button class="notif-btn" id="notifIcon"><i class="fas fa-bell"></i><span class="dot" id="notifDot"></span></button>
+                <div class="user-badge"><i class="fas fa-user-circle"></i><span id="userDisplay">User</span></div>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="page-header">
+                <h2>Reports</h2>
+                <div class="actions">
+                    <button class="btn btn-primary" id="generateReportBtn"><i class="fas fa-plus"></i> Generate Report</button>
+                    <button class="btn btn-outline" id="exportPdfBtn"><i class="fas fa-download"></i> Export PDF</button>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-boxes" style="color:var(--primary)"></i> Inventory Report</div>
+                    <canvas id="inventoryChart" height="150" style="width:100%;"></canvas>
+                </div>
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-chart-line" style="color:var(--accent)"></i> Financial Report</div>
+                    <canvas id="financialChart" height="150" style="width:100%;"></canvas>
+                </div>
+            </div>
+
+            <!-- Reports List -->
+            <div class="card">
+                <div class="card-title"><i class="fas fa-list"></i> Generated Reports</div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Report</th><th>Generated</th><th>Type</th><th>Action</th></tr>
+                        </thead>
+                        <tbody id="reportsTable">
+                            <tr><td colspan="4" style="text-align:center;color:var(--text-light)">No reports generated yet</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN OVERLAY (hidden by default) -->
+    <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
+        <div class="login-box">
+            <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
+            <div class="default-creds"><strong>Default Admin:</strong> admin@drugsnmore.com / admin123</div>
+            <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
+            <div class="form-group"><label>Email</label><input id="loginEmail" placeholder="user@example.com" value="admin@drugsnmore.com" /></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" value="admin123" /></div>
+            <button class="btn btn-primary" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+            <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
+            <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize auth
+            initAuth(() => {
+                loadReports();
+                drawCharts();
+            });
+            attachLoginHandlers();
+
+            // Generate report button (mock)
+            document.getElementById('generateReportBtn').addEventListener('click', async () => {
+                try {
+                    // Simulate generating a report – create a new report entry
+                    const reportTypes = ['Inventory Summary', 'Financial Overview', 'Dispatch Analytics', 'Stock Movement'];
+                    const randomType = reportTypes[Math.floor(Math.random() * reportTypes.length)];
+                    await db.collection('reports').add({
+                        title: `${randomType} - ${new Date().toLocaleDateString()}`,
+                        type: randomType,
+                        generatedBy: currentUser?.uid || 'system',
+                        generatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    showToast('Report generated!');
+                    loadReports();
+                } catch (e) {
+                    showToast(e.message, 'error');
+                }
+            });
+
+            // Export PDF button (placeholder)
+            document.getElementById('exportPdfBtn').addEventListener('click', () => {
+                showToast('PDF export coming soon', 'info');
+            });
+
+            // Load reports
+            async function loadReports() {
+                try {
+                    const snap = await db.collection('reports').orderBy('generatedAt', 'desc').get();
+                    const tbody = document.getElementById('reportsTable');
+
+                    if (snap.empty) {
+                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No reports generated yet</td></tr>';
+                        return;
+                    }
+
+                    let html = '';
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        html += `
+                            <tr>
+                                <td>${d.title || 'Report'}</td>
+                                <td>${d.generatedAt?.toDate?.()?.toLocaleString() || '—'}</td>
+                                <td>${d.type || '—'}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline" onclick="viewReport('${doc.id}')"><i class="fas fa-eye"></i> View</button>
+                                    <button class="btn btn-sm btn-outline" onclick="downloadReport('${doc.id}')"><i class="fas fa-download"></i></button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+
+                    // View function
+                    window.viewReport = async (id) => {
+                        try {
+                            const doc = await db.collection('reports').doc(id).get();
+                            if (!doc.exists) return showToast('Not found', 'error');
+                            const d = doc.data();
+                            alert(
+                                `Report: ${d.title || 'Report'}\n` +
+                                `Type: ${d.type || '—'}\n` +
+                                `Generated: ${d.generatedAt?.toDate?.()?.toLocaleString() || '—'}\n` +
+                                `ID: ${id.slice(0,6)}`
+                            );
+                        } catch (e) {
+                            showToast(e.message, 'error');
+                        }
+                    };
+
+                    // Download function (placeholder)
+                    window.downloadReport = async (id) => {
+                        showToast('Download functionality coming soon', 'info');
+                    };
+
+                } catch (e) {
+                    console.warn('Error loading reports:', e);
+                }
+            }
+
+            // Draw placeholder charts
+            function drawCharts() {
+                // Inventory Chart (bar chart)
+                const canvas1 = document.getElementById('inventoryChart');
+                if (canvas1) {
+                    const ctx = canvas1.getContext('2d');
+                    const w = canvas1.width;
+                    const h = canvas1.height;
+
+                    // Clear
+                    ctx.clearRect(0, 0, w, h);
+
+                    // Background
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.fillRect(0, 0, w, h);
+
+                    // Draw bars
+                    const data = [40, 55, 30, 70, 45, 60, 35];
+                    const colors = ['#0b6e4f', '#1a8a6a', '#2aa37a', '#0b6e4f', '#1a8a6a', '#2aa37a', '#0b6e4f'];
+                    const max = Math.max(...data);
+                    const barWidth = (w - 40) / data.length - 8;
+                    const startX = 20;
+
+                    data.forEach((val, i) => {
+                        const barHeight = (val / max) * (h - 40);
+                        const x = startX + i * (barWidth + 8);
+                        const y = h - 20 - barHeight;
+                        ctx.fillStyle = colors[i % colors.length];
+                        ctx.fillRect(x, y, barWidth, barHeight);
+
+                        // Label
+                        ctx.fillStyle = '#5a6f8a';
+                        ctx.font = '10px Inter, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(val, x + barWidth/2, h - 5);
+                    });
+
+                    // Title
+                    ctx.fillStyle = '#1e2a3a';
+                    ctx.font = '12px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Warehouse Stock (units)', w/2, 15);
+                }
+
+                // Financial Chart (line chart placeholder)
+                const canvas2 = document.getElementById('financialChart');
+                if (canvas2) {
+                    const ctx = canvas2.getContext('2d');
+                    const w = canvas2.width;
+                    const h = canvas2.height;
+
+                    ctx.clearRect(0, 0, w, h);
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.fillRect(0, 0, w, h);
+
+                    // Draw a simple line
+                    const points = [20, 40, 30, 60, 50, 80, 70, 90, 85, 100];
+                    const max = Math.max(...points);
+                    const spacing = (w - 40) / (points.length - 1);
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#f39c12';
+                    ctx.lineWidth = 2.5;
+                    points.forEach((val, i) => {
+                        const x = 20 + i * spacing;
+                        const y = h - 20 - (val / max) * (h - 40);
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    });
+                    ctx.stroke();
+
+                    // Draw points
+                    points.forEach((val, i) => {
+                        const x = 20 + i * spacing;
+                        const y = h - 20 - (val / max) * (h - 40);
+                        ctx.beginPath();
+                        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                        ctx.fillStyle = '#f39c12';
+                        ctx.fill();
+                        ctx.fillStyle = '#fff';
+                        ctx.font = '8px Inter, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(val, x, y - 8);
+                    });
+
+                    ctx.fillStyle = '#1e2a3a';
+                    ctx.font = '12px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Revenue Trend ($)', w/2, 15);
+                }
+            }
+
+            // Redraw charts on resize
+            window.addEventListener('resize', drawCharts);
+
+            // Re-export loadReports
+            window.loadReports = loadReports;
+        });
+    </script>
+</body>
+</html>
