@@ -80,27 +80,45 @@ function getCurrency() {
     return currentCurrency;
 }
 
-// ----- SEED ADMIN -----
+// ===== ROBUST SEED ADMIN =====
 async function seedAdmin() {
+    const adminEmail = 'superadmin@drugsnmore.com';
+    const adminPass = 'superadmin123';
+    
     try {
-        const snap = await db.collection('users').limit(1).get();
-        if (!snap.empty) return;
-        const cred = await auth.createUserWithEmailAndPassword('superadmin@drugsnmore.com', 'superadmin123');
-        await cred.user.updateProfile({ displayName: 'Super Admin' });
-        await db.collection('users').doc(cred.user.uid).set({
-            email: 'superadmin@drugsnmore.com',
-            role: 'superadmin',
-            displayName: 'Super Admin',
-            branch: 'Headquarters',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        // Also set default currency in config
-        await db.collection('config').doc('system').set({
-            currency: '$'
-        }, { merge: true });
-        console.log('✅ Default super admin created: superadmin@drugsnmore.com / superadmin123');
-        await auth.signOut();
-    } catch (e) { console.warn('Seed error:', e.message); }
+        // First, try to sign in – if it works, account exists
+        try {
+            await auth.signInWithEmailAndPassword(adminEmail, adminPass);
+            await auth.signOut();
+            console.log('✅ Super admin already exists');
+            return;
+        } catch (signInError) {
+            // If user not found, create the account
+            if (signInError.code === 'auth/user-not-found') {
+                console.log('🔨 Creating super admin account...');
+                const cred = await auth.createUserWithEmailAndPassword(adminEmail, adminPass);
+                await cred.user.updateProfile({ displayName: 'Super Admin' });
+                await db.collection('users').doc(cred.user.uid).set({
+                    email: adminEmail,
+                    role: 'superadmin',
+                    displayName: 'Super Admin',
+                    branch: 'Headquarters',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                // Set default currency
+                await db.collection('config').doc('system').set({
+                    currency: '$'
+                }, { merge: true });
+                console.log('✅ Super admin created successfully');
+                await auth.signOut();
+            } else {
+                // Some other error (network, etc.)
+                console.warn('Seed admin check error:', signInError.message);
+            }
+        }
+    } catch (e) {
+        console.warn('Seed admin fatal error:', e.message);
+    }
 }
 
 // ----- AUTH INIT -----
@@ -112,7 +130,7 @@ function initAuth(callback) {
             if (displayEl) displayEl.textContent = user.displayName || user.email || 'User';
             showApp();
             
-            // Load currency first
+            // Load currency
             await loadCurrency();
             
             try {
@@ -140,6 +158,7 @@ function initAuth(callback) {
             currentUser = null;
             currentUserRole = 'user';
             showLogin();
+            // Seed admin only if no one is logged in
             seedAdmin();
         }
     });
