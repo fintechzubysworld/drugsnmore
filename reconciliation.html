@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reconciliation · Drugs n' More</title>
+    <link rel="stylesheet" href="common.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+</head>
+<body>
+    <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
+        <nav class="sidebar-nav">
+            <div class="nav-label">Main</div>
+            <a href="index.html"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="dispatch.html"><i class="fas fa-truck"></i> Dispatch</a>
+            <a href="receive.html"><i class="fas fa-arrow-down"></i> Receive</a>
+            <a href="warehouse.html"><i class="fas fa-warehouse"></i> Warehouse</a>
+            <a href="pharmacy-shelf.html"><i class="fas fa-shelves"></i> Pharmacy Shelf</a>
+            <a href="branches.html"><i class="fas fa-store"></i> Branches</a>
+            <div class="nav-label">Supply</div>
+            <a href="suppliers.html"><i class="fas fa-handshake"></i> Suppliers</a>
+            <a href="request-shipment.html"><i class="fas fa-paper-plane"></i> Request Shipment</a>
+            <a href="returns.html"><i class="fas fa-undo"></i> Returns</a>
+            <div class="nav-label">Finance</div>
+            <a href="invoice-repository.html"><i class="fas fa-file-invoice"></i> Invoice Repository</a>
+            <a href="outstanding-invoices.html"><i class="fas fa-clock"></i> Outstanding (Invoice)</a>
+            <a href="outstanding-shipments.html"><i class="fas fa-clock"></i> Outstanding (Shipment)</a>
+            <a href="reconciliation.html" class="active"><i class="fas fa-balance-scale"></i> Reconciliation</a>
+            <a href="ledger.html"><i class="fas fa-book"></i> Ledger</a>
+            <div class="nav-label">Admin</div>
+            <a href="users.html"><i class="fas fa-users"></i> Users</a>
+            <a href="admin.html"><i class="fas fa-user-shield"></i> Admin</a>
+            <a href="super-admin.html"><i class="fas fa-crown"></i> Super Admin</a>
+            <a href="system-configurations.html"><i class="fas fa-cog"></i> System Config</a>
+            <div class="nav-label">Reporting</div>
+            <a href="reports.html"><i class="fas fa-chart-bar"></i> Reports</a>
+            <a href="data.html"><i class="fas fa-database"></i> Data</a>
+            <a href="notifications.html"><i class="fas fa-bell"></i> Notifications</a>
+            <div class="nav-label">Other</div>
+            <a href="profile.html"><i class="fas fa-user-circle"></i> Profile</a>
+            <a href="sheet.html"><i class="fas fa-table"></i> Sheet</a>
+            <a href="authentication.html"><i class="fas fa-lock"></i> Authentication</a>
+            <a href="reset.html"><i class="fas fa-key"></i> Reset</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+                <h2 id="pageTitle">Reconciliation</h2>
+            </div>
+            <div class="header-right">
+                <button class="notif-btn" id="notifIcon"><i class="fas fa-bell"></i><span class="dot" id="notifDot"></span></button>
+                <div class="user-badge"><i class="fas fa-user-circle"></i><span id="userDisplay">User</span></div>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="page-header">
+                <h2>Reconciliation</h2>
+                <div class="actions">
+                    <button class="btn btn-primary" id="reconcileBtn"><i class="fas fa-sync"></i> Run Reconciliation</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Date</th><th>Type</th><th>Status</th><th>Difference</th><th>Action</th></tr>
+                        </thead>
+                        <tbody id="reconciliationTable">
+                            <tr><td colspan="5" style="text-align:center;color:var(--text-light)">No reconciliations</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN OVERLAY (hidden by default) -->
+    <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
+        <div class="login-box">
+            <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
+            <div class="default-creds"><strong>Default Admin:</strong> admin@drugsnmore.com / admin123</div>
+            <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
+            <div class="form-group"><label>Email</label><input id="loginEmail" placeholder="user@example.com" value="admin@drugsnmore.com" /></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" value="admin123" /></div>
+            <button class="btn btn-primary" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+            <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
+            <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize auth
+            initAuth(() => {
+                loadReconciliations();
+            });
+            attachLoginHandlers();
+
+            // Run Reconciliation
+            document.getElementById('reconcileBtn').addEventListener('click', async () => {
+                try {
+                    // Count pending invoices and pending dispatches
+                    const [invSnap, disSnap] = await Promise.all([
+                        db.collection('invoices').where('status', '==', 'pending').get(),
+                        db.collection('dispatches').where('status', '==', 'pending').get()
+                    ]);
+                    const pendingInvoices = invSnap.size;
+                    const pendingDispatches = disSnap.size;
+                    const difference = pendingInvoices - pendingDispatches;
+
+                    // Create reconciliation record
+                    await db.collection('reconciliations').add({
+                        type: 'Invoice vs Dispatch',
+                        status: 'completed',
+                        difference: difference,
+                        pendingInvoices: pendingInvoices,
+                        pendingDispatches: pendingDispatches,
+                        createdBy: currentUser?.uid || 'system',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    showToast(`Reconciliation completed! Difference: ${difference} (Invoices: ${pendingInvoices}, Dispatches: ${pendingDispatches})`);
+                    loadReconciliations();
+                } catch (e) {
+                    showToast(e.message, 'error');
+                }
+            });
+
+            // Load reconciliations
+            async function loadReconciliations() {
+                try {
+                    const snap = await db.collection('reconciliations').orderBy('createdAt', 'desc').get();
+                    const tbody = document.getElementById('reconciliationTable');
+
+                    if (snap.empty) {
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light)">No reconciliations</td></tr>';
+                        return;
+                    }
+
+                    let html = '';
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        const diff = d.difference || 0;
+                        const diffColor = diff === 0 ? 'var(--text-light)' : diff > 0 ? '#28a745' : '#e74c3c';
+                        const statusClass = d.status === 'completed' ? 'badge-success' : 'badge-warning';
+                        html += `
+                            <tr>
+                                <td>${d.createdAt?.toDate?.()?.toLocaleDateString() || '—'}</td>
+                                <td>${d.type || '—'}</td>
+                                <td><span class="badge ${statusClass}">${d.status || 'pending'}</span></td>
+                                <td style="font-weight:600;color:${diffColor}">
+                                    ${diff > 0 ? '+' : ''}${diff}
+                                    ${d.pendingInvoices !== undefined ? ` (Inv: ${d.pendingInvoices}, Dis: ${d.pendingDispatches})` : ''}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline" onclick="viewReconciliation('${doc.id}')">View</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+
+                    // View function
+                    window.viewReconciliation = async (id) => {
+                        try {
+                            const doc = await db.collection('reconciliations').doc(id).get();
+                            if (!doc.exists) return showToast('Not found', 'error');
+                            const d = doc.data();
+                            alert(
+                                `Reconciliation ${id.slice(0,6)}\n` +
+                                `Type: ${d.type || '—'}\n` +
+                                `Status: ${d.status || 'pending'}\n` +
+                                `Difference: ${d.difference || 0}\n` +
+                                `Pending Invoices: ${d.pendingInvoices || 0}\n` +
+                                `Pending Dispatches: ${d.pendingDispatches || 0}\n` +
+                                `Date: ${d.createdAt?.toDate?.()?.toLocaleString() || '—'}`
+                            );
+                        } catch (e) {
+                            showToast(e.message, 'error');
+                        }
+                    };
+
+                } catch (e) {
+                    console.warn('Error loading reconciliations:', e);
+                }
+            }
+
+            // Re-export loadReconciliations
+            window.loadReconciliations = loadReconciliations;
+        });
+    </script>
+</body>
+</html>
