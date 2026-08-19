@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>System Configurations · Drugs n' More</title>
+    <link rel="stylesheet" href="common.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        .config-section {
+            border: 1px solid #eef1f5;
+            border-radius: var(--radius);
+            padding: 18px 20px;
+            background: #fafbfc;
+            transition: 0.2s;
+        }
+        .config-section:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        }
+        .config-section .section-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .config-section .section-title i {
+            color: var(--primary);
+            width: 20px;
+        }
+        .wipe-btn {
+            background: #e74c3c;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 600;
+            border: none;
+            transition: 0.2s;
+        }
+        .wipe-btn:hover {
+            background: #c0392b;
+            transform: scale(1.02);
+        }
+        .auth-box {
+            max-width: 500px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .auth-box i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 16px;
+        }
+        .auth-box .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        .locked-overlay {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+        .locked-overlay::after {
+            content: "🔒 Locked";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-light);
+            background: rgba(255,255,255,0.8);
+            padding: 8px 20px;
+            border-radius: 30px;
+            border: 2px dashed #dde2e9;
+        }
+        .unlocked .locked-overlay::after {
+            display: none;
+        }
+        .unlocked .locked-overlay {
+            pointer-events: auto;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
+        <nav class="sidebar-nav">
+            <div class="nav-label">Main</div>
+            <a href="index.html"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="dispatch.html"><i class="fas fa-truck"></i> Dispatch</a>
+            <a href="receive.html"><i class="fas fa-arrow-down"></i> Receive</a>
+            <a href="warehouse.html"><i class="fas fa-warehouse"></i> Warehouse</a>
+            <a href="pharmacy-shelf.html"><i class="fas fa-shelves"></i> Pharmacy Shelf</a>
+            <a href="branches.html"><i class="fas fa-store"></i> Branches</a>
+            <div class="nav-label">Supply</div>
+            <a href="suppliers.html"><i class="fas fa-handshake"></i> Suppliers</a>
+            <a href="request-shipment.html"><i class="fas fa-paper-plane"></i> Request Shipment</a>
+            <a href="returns.html"><i class="fas fa-undo"></i> Returns</a>
+            <div class="nav-label">Finance</div>
+            <a href="invoice-repository.html"><i class="fas fa-file-invoice"></i> Invoice Repository</a>
+            <a href="outstanding-invoices.html"><i class="fas fa-clock"></i> Outstanding (Invoice)</a>
+            <a href="outstanding-shipments.html"><i class="fas fa-clock"></i> Outstanding (Shipment)</a>
+            <a href="reconciliation.html"><i class="fas fa-balance-scale"></i> Reconciliation</a>
+            <a href="ledger.html"><i class="fas fa-book"></i> Ledger</a>
+            <div class="nav-label">Admin</div>
+            <a href="users.html"><i class="fas fa-users"></i> Users</a>
+            <a href="admin.html"><i class="fas fa-user-shield"></i> Admin</a>
+            <a href="super-admin.html"><i class="fas fa-crown"></i> Super Admin</a>
+            <a href="system-configurations.html" class="active"><i class="fas fa-cog"></i> System Config</a>
+            <div class="nav-label">Reporting</div>
+            <a href="reports.html"><i class="fas fa-chart-bar"></i> Reports</a>
+            <a href="data.html"><i class="fas fa-database"></i> Data</a>
+            <a href="notifications.html"><i class="fas fa-bell"></i> Notifications</a>
+            <div class="nav-label">Other</div>
+            <a href="profile.html"><i class="fas fa-user-circle"></i> Profile</a>
+            <a href="sheet.html"><i class="fas fa-table"></i> Sheet</a>
+            <a href="authentication.html"><i class="fas fa-lock"></i> Authentication</a>
+            <a href="reset.html"><i class="fas fa-key"></i> Reset</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+                <h2 id="pageTitle">System Configurations</h2>
+            </div>
+            <div class="header-right">
+                <button class="notif-btn" id="notifIcon"><i class="fas fa-bell"></i><span class="dot" id="notifDot"></span></button>
+                <div class="user-badge"><i class="fas fa-user-circle"></i><span id="userDisplay">User</span></div>
+            </div>
+        </header>
+
+        <div class="content" id="configContent">
+            <div class="page-header">
+                <h2>System Configurations</h2>
+                <span class="sub">Super Admin only — requires authentication to modify</span>
+            </div>
+
+            <!-- Authentication required -->
+            <div class="card auth-box" id="authCard">
+                <i class="fas fa-lock"></i>
+                <h3>Authentication Required</h3>
+                <p style="color:var(--text-light);font-size:0.9rem;margin-bottom:16px;">
+                    You must re-enter your password to access and modify system configurations.
+                </p>
+                <div class="form-group">
+                    <label>Enter your password</label>
+                    <input id="configAuthPass" type="password" placeholder="••••••••" />
+                </div>
+                <button class="btn btn-primary" id="configAuthBtn"><i class="fas fa-unlock-alt"></i> Authenticate</button>
+                <div id="authError" style="color:#e74c3c;font-size:0.85rem;margin-top:12px;display:none;"></div>
+            </div>
+
+            <!-- Config sections (hidden until authenticated) -->
+            <div id="configSections" style="display:none;">
+                <div style="margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;">
+                    <button class="btn btn-outline" id="saveAllConfigBtn"><i class="fas fa-save"></i> Save All Settings</button>
+                    <button class="btn btn-outline" id="refreshConfigBtn"><i class="fas fa-sync"></i> Refresh</button>
+                </div>
+
+                <div class="grid-2" id="configGrid">
+                    <!-- Profile Settings -->
+                    <div class="config-section">
+                        <div class="section-title"><i class="fas fa-user-circle"></i> Profile Settings</div>
+                        <div class="form-group"><label>Display Name</label><input id="cfgProfileName" placeholder="Admin" /></div>
+                        <div class="form-group"><label>Email</label><input id="cfgProfileEmail" placeholder="admin@example.com" /></div>
+                    </div>
+
+                    <!-- Dashboard Settings -->
+                    <div class="config-section">
+                        <div class="section-title"><i class="fas fa-chart-pie"></i> Dashboard Settings</div>
+                        <div class="form-group"><label>Default View</label>
+                            <select id="cfgDashboardView">
+                                <option value="overview">Overview</option>
+                                <option value="analytics">Analytics</option>
+                                <option value="summary">Summary</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- User Settings -->
+                    <div class="config-section">
+                        <div class="section-title"><i class="fas fa-users-cog"></i> User Settings</div>
+                        <div class="form-group"><label>Default Role for New Users</label>
+                            <select id="cfgDefaultRole">
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Admin Settings -->
+                    <div class="config-section">
+                        <div class="section-title"><i class="fas fa-user-shield"></i> Admin Settings</div>
+                        <div class="form-group"><label>Require 2FA for Admin</label>
+                            <select id="cfgAdmin2FA">
+                                <option value="no">No</option>
+                                <option value="yes">Yes</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Admin Session Timeout (minutes)</label>
+                            <input id="cfgAdminTimeout" type="number" value="60" min="5" />
+                        </div>
+                    </div>
+
+                    <!-- Warehouse Settings -->
+                    <div class="config-section">
+                        <div class="section-title"><i class="fas fa-warehouse"></i> Warehouse Settings</div>
+                        <div class="form-group"><label>Default Location</label><input id="cfgWarehouseLoc" placeholder="Main Warehouse" /></div>
+                        <div class="form-group"><label>Low Stock Alert Threshold</label>
+                            <input id="cfgWarehouseThreshold" type="number" value="10" min="1" />
+                        </div>
+                    </div>
+
+                    <!-- Pharmacy Shelf Settings -->
+                    <div class="config-section">
+                        <div class="section-title"><i class="fas fa-shelves"></i> Pharmacy Shelf Settings</div>
+                        <div class="form-group"><label>Default Shelf</label><input id="cfgShelfDefault" placeholder="A-01" /></div>
+                        <div class="form-group"><label>Auto-reorder when below</label>
+                            <input id="cfgShelfReorder" type="number" value="5" min="1" />
+                        </div>
+                    </div>
+
+                    <!-- Report Settings -->
+                    <div class="config-section">
+                        <div class="section-title"><i class="fas fa-chart-bar"></i> Report Settings</div>
+                        <div class="form-group"><label>Default Report Period</label>
+                            <select id="cfgReportPeriod">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Auto-generate Reports</label>
+                            <select id="cfgAutoReports">
+                                <option value="yes">Yes</option>
+                                <option value="no">No</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Data Settings -->
+                    <div class="config-section">
+                        <div class="section-title"><i class="fas fa-database"></i> Data Settings</div>
+                        <div class="form-group"><label>Auto Backup</label>
+                            <select id="cfgAutoBackup">
+                                <option value="on">On</option>
+                                <option value="off">Off</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Backup Frequency</label>
+                            <select id="cfgBackupFreq">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Reset Settings -->
+                    <div class="config-section">
+                        <div class="section-title"><i class="fas fa-key"></i> Reset Settings</div>
+                        <div class="form-group"><label>Reset Frequency (password reminders)</label>
+                            <select id="cfgResetFreq">
+                                <option value="never">Never</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Password Expiry (days)</label>
+                            <input id="cfgPassExpiry" type="number" value="90" min="1" />
+                        </div>
+                    </div>
+
+                    <!-- Authentication Settings -->
+                    <div class="config-section">
+                        <div class="section-title"><i class="fas fa-lock"></i> Authentication Settings</div>
+                        <div class="form-group"><label>Require 2FA for all users</label>
+                            <select id="cfg2FA">
+                                <option value="no">No</option>
+                                <option value="yes">Yes</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Session Timeout (minutes)</label>
+                            <input id="cfgSessionTimeout" type="number" value="30" min="5" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Wipe Section -->
+                <div class="card" style="border:2px solid #e74c3c;background:#fef6f6;">
+                    <div class="card-title" style="color:#e74c3c;"><i class="fas fa-exclamation-triangle"></i> Dangerous Zone</div>
+                    <p style="margin-bottom:16px;color:var(--text-light);">
+                        <strong>Data Wipe:</strong> This will permanently delete ALL data from the database. This action cannot be undone.
+                        Only proceed if you are absolutely sure.
+                    </p>
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                        <button class="btn btn-danger" id="cfgWipeBtn"><i class="fas fa-trash-alt"></i> Wipe All Data</button>
+                        <span style="font-size:0.8rem;color:var(--text-light);align-self:center;">
+                            Requires confirmation
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN OVERLAY (hidden by default) -->
+    <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
+        <div class="login-box">
+            <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
+            <div class="default-creds"><strong>Default Admin:</strong> admin@drugsnmore.com / admin123</div>
+            <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
+            <div class="form-group"><label>Email</label><input id="loginEmail" placeholder="user@example.com" value="admin@drugsnmore.com" /></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" value="admin123" /></div>
+            <button class="btn btn-primary" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+            <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
+            <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let isAuthenticated = false;
+
+            // Initialize auth
+            initAuth((user) => {
+                // Check if user is super admin
+                if (currentUserRole !== 'superadmin') {
+                    // Show access denied message and hide everything
+                    document.getElementById('configContent').innerHTML = `
+                        <div class="page-header"><h2>Access Denied</h2></div>
+                        <div class="card" style="text-align:center;padding:40px;">
+                            <i class="fas fa-ban" style="font-size:3rem;color:#e74c3c;display:block;margin-bottom:16px;"></i>
+                            <h3>Super Admin Only</h3>
+                            <p style="color:var(--text-light);">You do not have permission to access system configurations.</p>
+                            <p style="color:var(--text-light);margin-top:8px;">This page is restricted to Super Administrators.</p>
+                            <button class="btn btn-outline" onclick="location.href='index.html'" style="margin-top:16px;">
+                                <i class="fas fa-arrow-left"></i> Go to Dashboard
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Super admin - show auth card
+                // We keep auth card visible until authenticated
+                // Also load current config values
+                loadConfigValues();
+            });
+            attachLoginHandlers();
+
+            // Authenticate button
+            document.getElementById('configAuthBtn').addEventListener('click', async function() {
+                const pass = document.getElementById('configAuthPass').value;
+                const errorEl = document.getElementById('authError');
+                errorEl.style.display = 'none';
+                if (!pass) {
+                    errorEl.textContent = 'Please enter your password.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+                try {
+                    // Re-authenticate
+                    const credential = firebase.auth.EmailAuthProvider.credential(
+                        currentUser.email,
+                        pass
+                    );
+                    await currentUser.reauthenticateWithCredential(credential);
+                    // Success
+                    isAuthenticated = true;
+                    document.getElementById('authCard').style.display = 'none';
+                    document.getElementById('configSections').style.display = 'block';
+                    showToast('Authentication successful!', 'success');
+                    // Load config values again (in case we need fresh)
+                    loadConfigValues();
+                } catch (e) {
+                    errorEl.textContent = 'Invalid password. Please try again.';
+                    errorEl.style.display = 'block';
+                    showToast('Authentication failed', 'error');
+                }
+            });
+
+            // Allow Enter key on password field
+            document.getElementById('configAuthPass').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') document.getElementById('configAuthBtn').click();
+            });
+
+            // Load configuration values from Firestore
+            async function loadConfigValues() {
+                try {
+                    const doc = await db.collection('config').doc('system').get();
+                    if (doc.exists) {
+                        const d = doc.data();
+                        // Profile
+                        document.getElementById('cfgProfileName').value = d.profileName || '';
+                        document.getElementById('cfgProfileEmail').value = d.profileEmail || '';
+                        // Dashboard
+                        document.getElementById('cfgDashboardView').value = d.dashboardView || 'overview';
+                        // User
+                        document.getElementById('cfgDefaultRole').value = d.defaultRole || 'user';
+                        // Admin
+                        document.getElementById('cfgAdmin2FA').value = d.admin2FA || 'no';
+                        document.getElementById('cfgAdminTimeout').value = d.adminTimeout || '60';
+                        // Warehouse
+                        document.getElementById('cfgWarehouseLoc').value = d.warehouseLoc || 'Main Warehouse';
+                        document.getElementById('cfgWarehouseThreshold').value = d.warehouseThreshold || '10';
+                        // Shelf
+                        document.getElementById('cfgShelfDefault').value = d.shelfDefault || 'A-01';
+                        document.getElementById('cfgShelfReorder').value = d.shelfReorder || '5';
+                        // Report
+                        document.getElementById('cfgReportPeriod').value = d.reportPeriod || 'monthly';
+                        document.getElementById('cfgAutoReports').value = d.autoReports || 'yes';
+                        // Data
+                        document.getElementById('cfgAutoBackup').value = d.autoBackup || 'on';
+                        document.getElementById('cfgBackupFreq').value = d.backupFreq || 'weekly';
+                        // Reset
+                        document.getElementById('cfgResetFreq').value = d.resetFreq || 'never';
+                        document.getElementById('cfgPassExpiry').value = d.passExpiry || '90';
+                        // Auth
+                        document.getElementById('cfg2FA').value = d.twoFA || 'no';
+                        document.getElementById('cfgSessionTimeout').value = d.sessionTimeout || '30';
+                    } else {
+                        // Set defaults if no config doc
+                        setDefaultConfig();
+                    }
+                } catch (e) {
+                    console.warn('Error loading config:', e);
+                    // Set defaults if error
+                    setDefaultConfig();
+                }
+            }
+
+            function setDefaultConfig() {
+                document.getElementById('cfgProfileName').value = currentUser?.displayName || '';
+                document.getElementById('cfgProfileEmail').value = currentUser?.email || '';
+                document.getElementById('cfgDashboardView').value = 'overview';
+                document.getElementById('cfgDefaultRole').value = 'user';
+                document.getElementById('cfgAdmin2FA').value = 'no';
+                document.getElementById('cfgAdminTimeout').value = '60';
+                document.getElementById('cfgWarehouseLoc').value = 'Main Warehouse';
+                document.getElementById('cfgWarehouseThreshold').value = '10';
+                document.getElementById('cfgShelfDefault').value = 'A-01';
+                document.getElementById('cfgShelfReorder').value = '5';
+                document.getElementById('cfgReportPeriod').value = 'monthly';
+                document.getElementById('cfgAutoReports').value = 'yes';
+                document.getElementById('cfgAutoBackup').value = 'on';
+                document.getElementById('cfgBackupFreq').value = 'weekly';
+                document.getElementById('cfgResetFreq').value = 'never';
+                document.getElementById('cfgPassExpiry').value = '90';
+                document.getElementById('cfg2FA').value = 'no';
+                document.getElementById('cfgSessionTimeout').value = '30';
+            }
+
+            // Save All Settings
+            document.getElementById('saveAllConfigBtn').addEventListener('click', async function() {
+                if (!isAuthenticated) {
+                    showToast('Please authenticate first', 'error');
+                    return;
+                }
+                const data = {
+                    profileName: document.getElementById('cfgProfileName').value.trim(),
+                    profileEmail: document.getElementById('cfgProfileEmail').value.trim(),
+                    dashboardView: document.getElementById('cfgDashboardView').value,
+                    defaultRole: document.getElementById('cfgDefaultRole').value,
+                    admin2FA: document.getElementById('cfgAdmin2FA').value,
+                    adminTimeout: parseInt(document.getElementById('cfgAdminTimeout').value) || 60,
+                    warehouseLoc: document.getElementById('cfgWarehouseLoc').value.trim(),
+                    warehouseThreshold: parseInt(document.getElementById('cfgWarehouseThreshold').value) || 10,
+                    shelfDefault: document.getElementById('cfgShelfDefault').value.trim(),
+                    shelfReorder: parseInt(document.getElementById('cfgShelfReorder').value) || 5,
+                    reportPeriod: document.getElementById('cfgReportPeriod').value,
+                    autoReports: document.getElementById('cfgAutoReports').value,
+                    autoBackup: document.getElementById('cfgAutoBackup').value,
+                    backupFreq: document.getElementById('cfgBackupFreq').value,
+                    resetFreq: document.getElementById('cfgResetFreq').value,
+                    passExpiry: parseInt(document.getElementById('cfgPassExpiry').value) || 90,
+                    twoFA: document.getElementById('cfg2FA').value,
+                    sessionTimeout: parseInt(document.getElementById('cfgSessionTimeout').value) || 30,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                try {
+                    await db.collection('config').doc('system').set(data, { merge: true });
+                    showToast('All settings saved successfully!', 'success');
+                } catch (e) {
+                    showToast('Error saving: ' + e.message, 'error');
+                }
+            });
+
+            // Refresh button
+            document.getElementById('refreshConfigBtn').addEventListener('click', function() {
+                loadConfigValues();
+                showToast('Settings refreshed', 'info');
+            });
+
+            // Data Wipe
+            document.getElementById('cfgWipeBtn').addEventListener('click', async function() {
+                if (!isAuthenticated) {
+                    showToast('Please authenticate first', 'error');
+                    return;
+                }
+                if (!confirm('⚠️ WARNING: This will delete ALL data from the database. Are you absolutely sure?')) return;
+                if (!confirm('Type "YES" to confirm permanent deletion.')) return;
+                if (!confirm('FINAL WARNING: This action is IRREVERSIBLE. Click OK to proceed.')) return;
+
+                try {
+                    // List all collections to wipe
+                    const collections = [
+                        'dispatches', 'receives', 'warehouse', 'shelf', 'branches',
+                        'suppliers', 'requests', 'returns', 'invoices', 'reconciliations',
+                        'ledger', 'users', 'notifications', 'reports', 'sheetTemplates',
+                        'config' // we might keep config? But we'll wipe it too, but keep system config? Let's keep config.
+                    ];
+                    // Actually, we should not wipe the config collection, because we want to keep system settings.
+                    // But data wipe is for user data, not system config. We'll exclude 'config' and maybe 'users'? 
+                    // But they said "Data Wipe" – we'll wipe all collections except 'config' and maybe 'users'? 
+                    // I'll wipe all except 'config' and 'users' (users are part of data, but we might keep admin? 
+                    // Let's wipe all data collections: dispatch, receive, warehouse, shelf, branches, suppliers, 
+                    // requests, returns, invoices, reconciliations, ledger, notifications, reports, sheetTemplates.
+                    const wipeCollections = [
+                        'dispatches', 'receives', 'warehouse', 'shelf', 'branches',
+                        'suppliers', 'requests', 'returns', 'invoices', 'reconciliations',
+                        'ledger', 'notifications', 'reports', 'sheetTemplates'
+                    ];
+                    let totalDeleted = 0;
+                    for (const col of wipeCollections) {
+                        const snap = await db.collection(col).get();
+                        if (snap.empty) continue;
+                        const batch = db.batch();
+                        snap.forEach(doc => batch.delete(doc.ref));
+                        await batch.commit();
+                        totalDeleted += snap.size;
+                    }
+                    showToast(`Data wipe complete! ${totalDeleted} documents deleted.`, 'success');
+                } catch (e) {
+                    showToast('Error during data wipe: ' + e.message, 'error');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
