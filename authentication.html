@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Authentication · Drugs n' More</title>
+    <link rel="stylesheet" href="common.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+</head>
+<body>
+    <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
+        <nav class="sidebar-nav">
+            <div class="nav-label">Main</div>
+            <a href="index.html"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="dispatch.html"><i class="fas fa-truck"></i> Dispatch</a>
+            <a href="receive.html"><i class="fas fa-arrow-down"></i> Receive</a>
+            <a href="warehouse.html"><i class="fas fa-warehouse"></i> Warehouse</a>
+            <a href="pharmacy-shelf.html"><i class="fas fa-shelves"></i> Pharmacy Shelf</a>
+            <a href="branches.html"><i class="fas fa-store"></i> Branches</a>
+            <div class="nav-label">Supply</div>
+            <a href="suppliers.html"><i class="fas fa-handshake"></i> Suppliers</a>
+            <a href="request-shipment.html"><i class="fas fa-paper-plane"></i> Request Shipment</a>
+            <a href="returns.html"><i class="fas fa-undo"></i> Returns</a>
+            <div class="nav-label">Finance</div>
+            <a href="invoice-repository.html"><i class="fas fa-file-invoice"></i> Invoice Repository</a>
+            <a href="outstanding-invoices.html"><i class="fas fa-clock"></i> Outstanding (Invoice)</a>
+            <a href="outstanding-shipments.html"><i class="fas fa-clock"></i> Outstanding (Shipment)</a>
+            <a href="reconciliation.html"><i class="fas fa-balance-scale"></i> Reconciliation</a>
+            <a href="ledger.html"><i class="fas fa-book"></i> Ledger</a>
+            <div class="nav-label">Admin</div>
+            <a href="users.html"><i class="fas fa-users"></i> Users</a>
+            <a href="admin.html"><i class="fas fa-user-shield"></i> Admin</a>
+            <a href="super-admin.html"><i class="fas fa-crown"></i> Super Admin</a>
+            <a href="system-configurations.html"><i class="fas fa-cog"></i> System Config</a>
+            <div class="nav-label">Reporting</div>
+            <a href="reports.html"><i class="fas fa-chart-bar"></i> Reports</a>
+            <a href="data.html"><i class="fas fa-database"></i> Data</a>
+            <a href="notifications.html"><i class="fas fa-bell"></i> Notifications</a>
+            <div class="nav-label">Other</div>
+            <a href="profile.html"><i class="fas fa-user-circle"></i> Profile</a>
+            <a href="sheet.html"><i class="fas fa-table"></i> Sheet</a>
+            <a href="authentication.html" class="active"><i class="fas fa-lock"></i> Authentication</a>
+            <a href="reset.html"><i class="fas fa-key"></i> Reset</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+                <h2 id="pageTitle">Authentication</h2>
+            </div>
+            <div class="header-right">
+                <button class="notif-btn" id="notifIcon"><i class="fas fa-bell"></i><span class="dot" id="notifDot"></span></button>
+                <div class="user-badge"><i class="fas fa-user-circle"></i><span id="userDisplay">User</span></div>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="page-header">
+                <h2>Authentication</h2>
+                <span class="sub">Change your password</span>
+            </div>
+
+            <div class="card" style="max-width:500px;margin:0 auto;">
+                <div style="text-align:center;margin-bottom:24px;">
+                    <i class="fas fa-shield-alt" style="font-size:3rem;color:var(--primary);"></i>
+                    <p style="color:var(--text-light);font-size:0.9rem;margin-top:8px;">
+                        Update your account password. You'll need your current password to make changes.
+                    </p>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-key"></i> Current Password</label>
+                    <input id="authCurrentPass" type="password" placeholder="Enter current password" />
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-lock"></i> New Password</label>
+                    <input id="authNewPass" type="password" placeholder="Enter new password (min 6 characters)" />
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-check-circle"></i> Confirm New Password</label>
+                    <input id="authConfirmPass" type="password" placeholder="Confirm new password" />
+                </div>
+
+                <div style="display:flex;gap:12px;margin-top:8px;">
+                    <button class="btn btn-primary" id="authChangePassBtn" style="flex:1;">
+                        <i class="fas fa-save"></i> Change Password
+                    </button>
+                    <button class="btn btn-outline" id="authClearBtn">
+                        <i class="fas fa-undo"></i> Clear
+                    </button>
+                </div>
+
+                <div style="margin-top:16px;padding:12px;background:#f8fafc;border-radius:8px;font-size:0.8rem;color:var(--text-light);border:1px solid #eef1f5;">
+                    <i class="fas fa-info-circle" style="color:var(--primary);"></i>
+                    Password must be at least 6 characters long. After changing your password, you'll need to use the new password for future logins.
+                </div>
+            </div>
+
+            <!-- Account info card -->
+            <div class="card" style="max-width:500px;margin:20px auto 0;">
+                <div class="card-title"><i class="fas fa-user-circle"></i> Account Information</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input id="authEmail" disabled style="background:#f8fafc;" />
+                    </div>
+                    <div class="form-group">
+                        <label>UID</label>
+                        <input id="authUid" disabled style="background:#f8fafc;font-size:0.75rem;" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Account Created</label>
+                    <input id="authCreated" disabled style="background:#f8fafc;" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN OVERLAY (hidden by default) -->
+    <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
+        <div class="login-box">
+            <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
+            <div class="default-creds"><strong>Default Admin:</strong> admin@drugsnmore.com / admin123</div>
+            <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
+            <div class="form-group"><label>Email</label><input id="loginEmail" placeholder="user@example.com" value="admin@drugsnmore.com" /></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" value="admin123" /></div>
+            <button class="btn btn-primary" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+            <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
+            <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize auth
+            initAuth(async (user) => {
+                // Populate account info
+                document.getElementById('authEmail').value = user.email || '—';
+                document.getElementById('authUid').value = user.uid || '—';
+                if (user.metadata && user.metadata.creationTime) {
+                    document.getElementById('authCreated').value = new Date(user.metadata.creationTime).toLocaleString();
+                }
+
+                // Also try to get user doc for more info
+                try {
+                    const doc = await db.collection('users').doc(user.uid).get();
+                    if (doc.exists) {
+                        const d = doc.data();
+                        // Optionally show role or branch info
+                    }
+                } catch(e) { console.warn(e); }
+            });
+            attachLoginHandlers();
+
+            // Change password
+            document.getElementById('authChangePassBtn').addEventListener('click', async () => {
+                const current = document.getElementById('authCurrentPass').value;
+                const newPass = document.getElementById('authNewPass').value;
+                const confirm = document.getElementById('authConfirmPass').value;
+
+                if (!current) {
+                    showToast('Please enter your current password', 'error');
+                    return;
+                }
+                if (!newPass || newPass.length < 6) {
+                    showToast('New password must be at least 6 characters', 'error');
+                    return;
+                }
+                if (newPass !== confirm) {
+                    showToast('New passwords do not match', 'error');
+                    return;
+                }
+                if (newPass === current) {
+                    showToast('New password must be different from current password', 'error');
+                    return;
+                }
+
+                try {
+                    // Re-authenticate first
+                    const credential = firebase.auth.EmailAuthProvider.credential(
+                        currentUser.email,
+                        current
+                    );
+                    await currentUser.reauthenticateWithCredential(credential);
+                    
+                    // Update password
+                    await currentUser.updatePassword(newPass);
+                    
+                    showToast('Password changed successfully!', 'success');
+                    
+                    // Clear fields
+                    document.getElementById('authCurrentPass').value = '';
+                    document.getElementById('authNewPass').value = '';
+                    document.getElementById('authConfirmPass').value = '';
+
+                    // Add a note to the user that they need to sign in again
+                    showToast('Please sign out and sign back in with your new password.', 'info');
+
+                } catch (e) {
+                    if (e.code === 'auth/wrong-password') {
+                        showToast('Current password is incorrect', 'error');
+                    } else if (e.code === 'auth/requires-recent-login') {
+                        showToast('Please sign out and sign back in, then try again', 'error');
+                    } else {
+                        showToast(e.message, 'error');
+                    }
+                    console.error('Password change error:', e);
+                }
+            });
+
+            // Clear button
+            document.getElementById('authClearBtn').addEventListener('click', () => {
+                document.getElementById('authCurrentPass').value = '';
+                document.getElementById('authNewPass').value = '';
+                document.getElementById('authConfirmPass').value = '';
+                showToast('Fields cleared', 'info');
+            });
+
+            // Allow Enter key on fields
+            const fields = ['authCurrentPass', 'authNewPass', 'authConfirmPass'];
+            fields.forEach(id => {
+                document.getElementById(id).addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') document.getElementById('authChangePassBtn').click();
+                });
+            });
+        });
+    </script>
+</body>
+</html>
