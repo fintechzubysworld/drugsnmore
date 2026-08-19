@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sheet · Drugs n' More</title>
+    <link rel="stylesheet" href="common.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        .sheet-table input[type="text"],
+        .sheet-table input[type="number"] {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #dde2e9;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            background: #fff;
+            transition: 0.2s;
+        }
+        .sheet-table input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(11, 110, 79, 0.15);
+            outline: none;
+        }
+        .sheet-table .total-row td {
+            background: #f8fafc;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        .sheet-table .total-row td:first-child {
+            text-align: right;
+        }
+        .sheet-table .remove-btn {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .sheet-table .remove-btn:hover {
+            color: #c0392b;
+            transform: scale(1.2);
+        }
+        .template-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+        .template-list-item span {
+            font-weight: 500;
+        }
+        .template-list-item .btn-sm {
+            margin-left: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
+        <nav class="sidebar-nav">
+            <div class="nav-label">Main</div>
+            <a href="index.html"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="dispatch.html"><i class="fas fa-truck"></i> Dispatch</a>
+            <a href="receive.html"><i class="fas fa-arrow-down"></i> Receive</a>
+            <a href="warehouse.html"><i class="fas fa-warehouse"></i> Warehouse</a>
+            <a href="pharmacy-shelf.html"><i class="fas fa-shelves"></i> Pharmacy Shelf</a>
+            <a href="branches.html"><i class="fas fa-store"></i> Branches</a>
+            <div class="nav-label">Supply</div>
+            <a href="suppliers.html"><i class="fas fa-handshake"></i> Suppliers</a>
+            <a href="request-shipment.html"><i class="fas fa-paper-plane"></i> Request Shipment</a>
+            <a href="returns.html"><i class="fas fa-undo"></i> Returns</a>
+            <div class="nav-label">Finance</div>
+            <a href="invoice-repository.html"><i class="fas fa-file-invoice"></i> Invoice Repository</a>
+            <a href="outstanding-invoices.html"><i class="fas fa-clock"></i> Outstanding (Invoice)</a>
+            <a href="outstanding-shipments.html"><i class="fas fa-clock"></i> Outstanding (Shipment)</a>
+            <a href="reconciliation.html"><i class="fas fa-balance-scale"></i> Reconciliation</a>
+            <a href="ledger.html"><i class="fas fa-book"></i> Ledger</a>
+            <div class="nav-label">Admin</div>
+            <a href="users.html"><i class="fas fa-users"></i> Users</a>
+            <a href="admin.html"><i class="fas fa-user-shield"></i> Admin</a>
+            <a href="super-admin.html"><i class="fas fa-crown"></i> Super Admin</a>
+            <a href="system-configurations.html"><i class="fas fa-cog"></i> System Config</a>
+            <div class="nav-label">Reporting</div>
+            <a href="reports.html"><i class="fas fa-chart-bar"></i> Reports</a>
+            <a href="data.html"><i class="fas fa-database"></i> Data</a>
+            <a href="notifications.html"><i class="fas fa-bell"></i> Notifications</a>
+            <div class="nav-label">Other</div>
+            <a href="profile.html"><i class="fas fa-user-circle"></i> Profile</a>
+            <a href="sheet.html" class="active"><i class="fas fa-table"></i> Sheet</a>
+            <a href="authentication.html"><i class="fas fa-lock"></i> Authentication</a>
+            <a href="reset.html"><i class="fas fa-key"></i> Reset</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+                <h2 id="pageTitle">Sheet</h2>
+            </div>
+            <div class="header-right">
+                <button class="notif-btn" id="notifIcon"><i class="fas fa-bell"></i><span class="dot" id="notifDot"></span></button>
+                <div class="user-badge"><i class="fas fa-user-circle"></i><span id="userDisplay">User</span></div>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="page-header">
+                <h2>Sheet</h2>
+                <span class="sub">Inventory & pricing spreadsheet</span>
+                <div class="actions">
+                    <button class="btn btn-primary" id="addRowBtn"><i class="fas fa-plus"></i> Add Row</button>
+                    <button class="btn btn-outline" id="sheetSettingsBtn"><i class="fas fa-cog"></i> Sheet Settings</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-wrap">
+                    <table class="sheet-table" id="sheetTable">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Item</th>
+                                <th>Packing Qty</th>
+                                <th>Price</th>
+                                <th>Qty</th>
+                                <th>Amount</th>
+                                <th>Discount %</th>
+                                <th>VAT %</th>
+                                <th><i class="fas fa-trash"></i></th>
+                            </tr>
+                        </thead>
+                        <tbody id="sheetBody">
+                            <tr><td colspan="9" style="text-align:center;color:var(--text-light);padding:30px;">
+                                No rows. Click "Add Row" to start.
+                            </td></tr>
+                        </tbody>
+                        <tfoot id="sheetFoot" class="total-row">
+                            <tr>
+                                <td colspan="5" style="text-align:right;">Totals</td>
+                                <td id="totalAmount">0.00</td>
+                                <td id="totalDiscount">0.00</td>
+                                <td id="totalVat">0.00</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN OVERLAY (hidden by default) -->
+    <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
+        <div class="login-box">
+            <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
+            <div class="default-creds"><strong>Default Admin:</strong> admin@drugsnmore.com / admin123</div>
+            <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
+            <div class="form-group"><label>Email</label><input id="loginEmail" placeholder="user@example.com" value="admin@drugsnmore.com" /></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" value="admin123" /></div>
+            <button class="btn btn-primary" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+            <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
+            <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
+        </div>
+    </div>
+
+    <!-- MODAL for Sheet Settings -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal" style="max-width:700px;">
+            <div class="modal-header">
+                <h3>Sheet Settings</h3>
+                <button class="close" id="settingsModalClose">&times;</button>
+            </div>
+            <div id="settingsModalBody">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+                    <div class="form-group">
+                        <label>Template Name</label>
+                        <input id="templateName" placeholder="My Template" />
+                    </div>
+                    <div class="form-group">
+                        <label>Default Discount (%)</label>
+                        <input id="defaultDiscount" type="number" step="0.1" value="0" />
+                    </div>
+                    <div class="form-group">
+                        <label>Default VAT (%)</label>
+                        <input id="defaultVat" type="number" step="0.1" value="7.5" />
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+                    <button class="btn btn-primary" id="saveTemplateBtn"><i class="fas fa-save"></i> Save Template</button>
+                    <button class="btn btn-outline" id="loadTemplateBtn"><i class="fas fa-upload"></i> Load Template</button>
+                    <button class="btn btn-danger" id="deleteTemplateBtn" style="display:none;"><i class="fas fa-trash"></i> Delete</button>
+                </div>
+                <hr style="margin:16px 0;border-color:#eef1f5;" />
+                <div id="templateList">
+                    <h4>Your Templates</h4>
+                    <div id="templatesContainer" style="margin-top:8px;max-height:200px;overflow-y:auto;">
+                        <p style="color:var(--text-light);font-size:0.9rem;">No templates saved yet.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize auth
+            initAuth(() => {
+                // Load any saved sheet rows from localStorage or start empty
+                loadSheetFromStorage();
+            });
+            attachLoginHandlers();
+
+            // Sheet state
+            let rows = [];
+            let rowIdCounter = 0;
+
+            // DOM refs
+            const sheetBody = document.getElementById('sheetBody');
+            const totalAmount = document.getElementById('totalAmount');
+            const totalDiscount = document.getElementById('totalDiscount');
+            const totalVat = document.getElementById('totalVat');
+
+            // Load from localStorage (persist across page reloads)
+            function loadSheetFromStorage() {
+                const saved = localStorage.getItem('sheetRows');
+                if (saved) {
+                    try {
+                        rows = JSON.parse(saved);
+                        rowIdCounter = rows.reduce((max, r) => Math.max(max, r.id || 0), 0) + 1;
+                    } catch(e) { rows = []; rowIdCounter = 0; }
+                } else {
+                    rows = [];
+                    rowIdCounter = 0;
+                }
+                renderSheet();
+            }
+
+            function saveSheetToStorage() {
+                localStorage.setItem('sheetRows', JSON.stringify(rows));
+            }
+
+            // Render the sheet
+            function renderSheet() {
+                if (rows.length === 0) {
+                    sheetBody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-light);padding:30px;">
+                        No rows. Click "Add Row" to start.
+                    </td></tr>`;
+                    updateTotals();
+                    return;
+                }
+
+                let html = '';
+                rows.forEach((row, index) => {
+                    const amount = (row.qty || 0) * (row.price || 0);
+                    const discount = amount * ((row.discount || 0) / 100);
+                    const vat = (amount - discount) * ((row.vat || 0) / 100);
+                    const total = amount - discount + vat;
+
+                    html += `
+                        <tr data-index="${index}">
+                            <td><input type="text" class="row-code" value="${row.code || ''}" placeholder="Code" /></td>
+                            <td><input type="text" class="row-item" value="${row.item || ''}" placeholder="Item" /></td>
+                            <td><input type="number" class="row-packing" value="${row.packingQty || 0}" step="1" min="0" /></td>
+                            <td><input type="number" class="row-price" value="${row.price || 0}" step="0.01" min="0" /></td>
+                            <td><input type="number" class="row-qty" value="${row.qty || 0}" step="1" min="0" /></td>
+                            <td class="row-amount">${total.toFixed(2)}</td>
+                            <td><input type="number" class="row-discount" value="${row.discount || 0}" step="0.1" min="0" max="100" /></td>
+                            <td><input type="number" class="row-vat" value="${row.vat || 0}" step="0.1" min="0" max="100" /></td>
+                            <td><button class="remove-btn" onclick="removeRow(${index})"><i class="fas fa-trash"></i></button></td>
+                        </tr>
+                    `;
+                });
+                sheetBody.innerHTML = html;
+
+                // Attach input events to recalc
+                sheetBody.querySelectorAll('input').forEach(input => {
+                    input.addEventListener('input', function(e) {
+                        const tr = this.closest('tr');
+                        if (!tr) return;
+                        const index = parseInt(tr.dataset.index);
+                        const row = rows[index];
+                        if (!row) return;
+
+                        // Update row data from inputs
+                        const codeInput = tr.querySelector('.row-code');
+                        const itemInput = tr.querySelector('.row-item');
+                        const packingInput = tr.querySelector('.row-packing');
+                        const priceInput = tr.querySelector('.row-price');
+                        const qtyInput = tr.querySelector('.row-qty');
+                        const discountInput = tr.querySelector('.row-discount');
+                        const vatInput = tr.querySelector('.row-vat');
+
+                        row.code = codeInput.value;
+                        row.item = itemInput.value;
+                        row.packingQty = parseFloat(packingInput.value) || 0;
+                        row.price = parseFloat(priceInput.value) || 0;
+                        row.qty = parseFloat(qtyInput.value) || 0;
+                        row.discount = parseFloat(discountInput.value) || 0;
+                        row.vat = parseFloat(vatInput.value) || 0;
+
+                        // Recalculate amount
+                        const amount = row.qty * row.price;
+                        const discountAmt = amount * (row.discount / 100);
+                        const vatAmt = (amount - discountAmt) * (row.vat / 100);
+                        const total = amount - discountAmt + vatAmt;
+                        tr.querySelector('.row-amount').textContent = total.toFixed(2);
+
+                        saveSheetToStorage();
+                        updateTotals();
+                    });
+                });
+
+                updateTotals();
+                saveSheetToStorage();
+            }
+
+            // Update totals row
+            function updateTotals() {
+                let totalAmt = 0, totalDisc = 0, totalVat = 0;
+                rows.forEach(row => {
+                    const amount = row.qty * row.price;
+                    const discount = amount * (row.discount / 100);
+                    const vat = (amount - discount) * (row.vat / 100);
+                    totalAmt += amount;
+                    totalDisc += discount;
+                    totalVat += vat;
+                });
+                totalAmount.textContent = totalAmt.toFixed(2);
+                totalDiscount.textContent = totalDisc.toFixed(2);
+                totalVat.textContent = totalVat.toFixed(2);
+            }
+
+            // Add row
+            document.getElementById('addRowBtn').addEventListener('click', function() {
+                rows.push({
+                    id: rowIdCounter++,
+                    code: '',
+                    item: '',
+                    packingQty: 0,
+                    price: 0,
+                    qty: 0,
+                    discount: 0,
+                    vat: 0
+                });
+                renderSheet();
+                // Scroll to bottom
+                const table = document.getElementById('sheetTable');
+                table.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            });
+
+            // Remove row (global)
+            window.removeRow = function(index) {
+                if (rows.length === 0) return;
+                if (!confirm('Remove this row?')) return;
+                rows.splice(index, 1);
+                renderSheet();
+            };
+
+            // ---- Sheet Settings Modal ----
+            const settingsModal = document.getElementById('settingsModal');
+            const settingsBtn = document.getElementById('sheetSettingsBtn');
+            const settingsClose = document.getElementById('settingsModalClose');
+
+            settingsBtn.addEventListener('click', function() {
+                settingsModal.style.display = 'flex';
+                // Populate default values
+                document.getElementById('templateName').value = '';
+                document.getElementById('defaultDiscount').value = '0';
+                document.getElementById('defaultVat').value = '7.5';
+                // Load template list
+                loadTemplateList();
+            });
+
+            settingsClose.addEventListener('click', function() {
+                settingsModal.style.display = 'none';
+            });
+
+            settingsModal.addEventListener('click', function(e) {
+                if (e.target === settingsModal) settingsModal.style.display = 'none';
+            });
+
+            // Save template
+            document.getElementById('saveTemplateBtn').addEventListener('click', async function() {
+                if (!currentUser) {
+                    showToast('You must be logged in to save templates', 'error');
+                    return;
+                }
+                const name = document.getElementById('templateName').value.trim();
+                if (!name) {
+                    showToast('Please enter a template name', 'error');
+                    return;
+                }
+                const defaultDiscount = parseFloat(document.getElementById('defaultDiscount').value) || 0;
+                const defaultVat = parseFloat(document.getElementById('defaultVat').value) || 0;
+
+                // Prepare rows data (without id)
+                const templateRows = rows.map(row => ({
+                    code: row.code || '',
+                    item: row.item || '',
+                    packingQty: row.packingQty || 0,
+                    price: row.price || 0,
+                    qty: row.qty || 0,
+                    discount: row.discount || 0,
+                    vat: row.vat || 0
+                }));
+
+                try {
+                    await db.collection('sheetTemplates').add({
+                        name: name,
+                        rows: templateRows,
+                        defaultDiscount: defaultDiscount,
+                        defaultVat: defaultVat,
+                        createdBy: currentUser.uid,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    showToast('Template saved!');
+                    document.getElementById('templateName').value = '';
+                    loadTemplateList();
+                } catch (e) {
+                    showToast(e.message, 'error');
+                }
+            });
+
+            // Load template list
+            async function loadTemplateList() {
+                if (!currentUser) {
+                    document.getElementById('templatesContainer').innerHTML = '<p style="color:var(--text-light);">Please log in to see your templates.</p>';
+                    return;
+                }
+                try {
+                    const snap = await db.collection('sheetTemplates')
+                        .where('createdBy', '==', currentUser.uid)
+                        .orderBy('createdAt', 'desc')
+                        .get();
+                    const container = document.getElementById('templatesContainer');
+                    if (snap.empty) {
+                        container.innerHTML = '<p style="color:var(--text-light);">No templates saved yet.</p>';
+                        return;
+                    }
+                    let html = '';
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        const rowCount = d.rows ? d.rows.length : 0;
+                        html += `
+                            <div class="template-list-item">
+                                <span><strong>${d.name}</strong> (${rowCount} rows)</span>
+                                <div>
+                                    <button class="btn btn-sm btn-primary" onclick="loadTemplate('${doc.id}')"><i class="fas fa-upload"></i> Load</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteTemplate('${doc.id}')"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                } catch (e) {
+                    console.warn('Error loading templates:', e);
+                    document.getElementById('templatesContainer').innerHTML = '<p style="color:#e74c3c;">Error loading templates.</p>';
+                }
+            }
+
+            // Load a specific template
+            window.loadTemplate = async function(id) {
+                try {
+                    const doc = await db.collection('sheetTemplates').doc(id).get();
+                    if (!doc.exists) {
+                        showToast('Template not found', 'error');
+                        return;
+                    }
+                    const d = doc.data();
+                    if (d.rows && Array.isArray(d.rows)) {
+                        // Convert to rows with ids
+                        rows = d.rows.map(r => ({
+                            id: rowIdCounter++,
+                            code: r.code || '',
+                            item: r.item || '',
+                            packingQty: r.packingQty || 0,
+                            price: r.price || 0,
+                            qty: r.qty || 0,
+                            discount: r.discount || 0,
+                            vat: r.vat || 0
+                        }));
+                        renderSheet();
+                        showToast(`Template "${d.name}" loaded!`);
+                        settingsModal.style.display = 'none';
+                    } else {
+                        showToast('Invalid template format', 'error');
+                    }
+                } catch (e) {
+                    showToast(e.message, 'error');
+                }
+            };
+
+            // Delete template
+            window.deleteTemplate = async function(id) {
+                if (!confirm('Delete this template?')) return;
+                try {
+                    await db.collection('sheetTemplates').doc(id).delete();
+                    showToast('Template deleted');
+                    loadTemplateList();
+                } catch (e) {
+                    showToast(e.message, 'error');
+                }
+            };
+
+            // Load template button (loads the first/latest template? Actually we use the list)
+            document.getElementById('loadTemplateBtn').addEventListener('click', function() {
+                loadTemplateList();
+                // Highlight the list
+                document.getElementById('templatesContainer').scrollIntoView({ behavior: 'smooth' });
+            });
+
+            // Initial render
+            renderSheet();
+        });
+    </script>
+</body>
+</html>
