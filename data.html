@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data · Drugs n' More</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="common.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+</head>
+<body>
+    <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
+        <nav class="sidebar-nav">
+            <div class="nav-label">Main</div>
+            <a href="index.html"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="dispatch.html"><i class="fas fa-truck"></i> Dispatch</a>
+            <a href="receive.html"><i class="fas fa-arrow-down"></i> Receive</a>
+            <a href="warehouse.html"><i class="fas fa-warehouse"></i> Warehouse</a>
+            <a href="pharmacy-shelf.html"><i class="fas fa-shelves"></i> Pharmacy Shelf</a>
+            <a href="branches.html"><i class="fas fa-store"></i> Branches</a>
+            <div class="nav-label">Supply</div>
+            <a href="suppliers.html"><i class="fas fa-handshake"></i> Suppliers</a>
+            <a href="request-shipment.html"><i class="fas fa-paper-plane"></i> Request Shipment</a>
+            <a href="returns.html"><i class="fas fa-undo"></i> Returns</a>
+            <div class="nav-label">Finance</div>
+            <a href="invoice-repository.html"><i class="fas fa-file-invoice"></i> Invoice Repository</a>
+            <a href="outstanding-invoices.html"><i class="fas fa-clock"></i> Outstanding (Invoice)</a>
+            <a href="outstanding-shipments.html"><i class="fas fa-clock"></i> Outstanding (Shipment)</a>
+            <a href="reconciliation.html"><i class="fas fa-balance-scale"></i> Reconciliation</a>
+            <a href="ledger.html"><i class="fas fa-book"></i> Ledger</a>
+            <div class="nav-label">Admin</div>
+            <a href="users.html"><i class="fas fa-users"></i> Users</a>
+            <a href="admin.html"><i class="fas fa-user-shield"></i> Admin</a>
+            <a href="super-admin.html"><i class="fas fa-crown"></i> Super Admin</a>
+            <a href="system-configurations.html"><i class="fas fa-cog"></i> System Config</a>
+            <div class="nav-label">Reporting</div>
+            <a href="reports.html"><i class="fas fa-chart-bar"></i> Reports</a>
+            <a href="data.html" class="active"><i class="fas fa-database"></i> Data</a>
+            <a href="notifications.html"><i class="fas fa-bell"></i> Notifications</a>
+            <div class="nav-label">Other</div>
+            <a href="profile.html"><i class="fas fa-user-circle"></i> Profile</a>
+            <a href="sheet.html"><i class="fas fa-table"></i> Sheet</a>
+            <a href="authentication.html"><i class="fas fa-lock"></i> Authentication</a>
+            <a href="reset.html"><i class="fas fa-key"></i> Reset</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+                <h2 id="pageTitle">Data</h2>
+            </div>
+            <div class="header-right">
+                <button class="notif-btn" id="notifIcon"><i class="fas fa-bell"></i><span class="dot" id="notifDot"></span></button>
+                <div class="user-badge"><i class="fas fa-user-circle"></i><span id="userDisplay">User</span></div>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="page-header">
+                <h2>Data</h2>
+                <span class="sub">Manage your database collections</span>
+                <div class="actions">
+                    <button class="btn btn-primary" id="exportAllBtn"><i class="fas fa-download"></i> Export All</button>
+                    <button class="btn btn-outline" id="refreshBtn"><i class="fas fa-sync"></i> Refresh</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Collection</th><th>Documents</th><th>Last Updated</th><th>Action</th></tr>
+                        </thead>
+                        <tbody id="dataTable">
+                            <tr><td colspan="4" style="text-align:center;color:var(--text-light);padding:40px;">
+                                <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;display:block;margin-bottom:10px;"></i>
+                                Loading collections...
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN OVERLAY (hidden by default) -->
+    <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
+        <div class="login-box">
+            <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
+            <div class="default-creds"><strong>Default Admin:</strong> admin@drugsnmore.com / admin123</div>
+            <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
+            <div class="form-group"><label>Email</label><input id="loginEmail" placeholder="user@example.com" value="admin@drugsnmore.com" /></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" value="admin123" /></div>
+            <button class="btn btn-primary" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+            <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
+            <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize auth
+            initAuth(() => {
+                loadDataCollections();
+            });
+            attachLoginHandlers();
+
+            // Refresh button
+            document.getElementById('refreshBtn').addEventListener('click', () => {
+                showToast('Refreshing data...', 'info');
+                loadDataCollections();
+            });
+
+            // Export All button
+            document.getElementById('exportAllBtn').addEventListener('click', async () => {
+                try {
+                    showToast('Exporting all collections...', 'info');
+                    const collections = [
+                        'dispatches', 'receives', 'warehouse', 'shelf', 'branches', 
+                        'suppliers', 'requests', 'returns', 'invoices', 'reconciliations', 
+                        'ledger', 'users', 'notifications', 'reports', 'sheetTemplates'
+                    ];
+                    const allData = {};
+                    let totalDocs = 0;
+                    for (const col of collections) {
+                        try {
+                            const snap = await db.collection(col).get();
+                            const docs = [];
+                            snap.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+                            allData[col] = docs;
+                            totalDocs += docs.length;
+                        } catch(e) {
+                            allData[col] = { error: e.message };
+                        }
+                    }
+                    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `drugs-n-more-all-data-${new Date().toISOString().slice(0,10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showToast(`All data exported successfully! (${totalDocs} documents)`);
+                } catch (e) {
+                    showToast('Error exporting: ' + e.message, 'error');
+                }
+            });
+
+            // Load data collections
+            async function loadDataCollections() {
+                try {
+                    const collections = [
+                        { name: 'dispatches', label: 'Dispatches' },
+                        { name: 'receives', label: 'Receives' },
+                        { name: 'warehouse', label: 'Warehouse' },
+                        { name: 'shelf', label: 'Pharmacy Shelf' },
+                        { name: 'branches', label: 'Branches' },
+                        { name: 'suppliers', label: 'Suppliers' },
+                        { name: 'requests', label: 'Shipment Requests' },
+                        { name: 'returns', label: 'Returns' },
+                        { name: 'invoices', label: 'Invoices' },
+                        { name: 'reconciliations', label: 'Reconciliations' },
+                        { name: 'ledger', label: 'Ledger' },
+                        { name: 'users', label: 'Users' },
+                        { name: 'notifications', label: 'Notifications' },
+                        { name: 'reports', label: 'Reports' },
+                        { name: 'sheetTemplates', label: 'Sheet Templates' },
+                        { name: 'config', label: 'System Config' }
+                    ];
+
+                    const tbody = document.getElementById('dataTable');
+                    let html = '';
+                    let totalDocs = 0;
+
+                    for (const col of collections) {
+                        try {
+                            const snap = await db.collection(col.name).get();
+                            const count = snap.size;
+                            totalDocs += count;
+
+                            // Get last updated timestamp
+                            let lastUpdated = '—';
+                            if (count > 0) {
+                                const lastDoc = snap.docs[snap.docs.length - 1];
+                                const data = lastDoc.data();
+                                const timestamp = data.updatedAt || data.createdAt || data.generatedAt || data.paidAt;
+                                if (timestamp?.toDate) {
+                                    lastUpdated = timestamp.toDate().toLocaleString();
+                                } else if (data.createdAt?.toDate) {
+                                    lastUpdated = data.createdAt.toDate().toLocaleString();
+                                }
+                            }
+
+                            html += `
+                                <tr>
+                                    <td><strong>${col.label}</strong><br><span style="font-size:0.75rem;color:var(--text-light);">${col.name}</span></td>
+                                    <td style="font-weight:600;font-size:1.1rem;">${count}</td>
+                                    <td>${lastUpdated}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline" onclick="exportCollection('${col.name}')"><i class="fas fa-download"></i> Export</button>
+                                    </td>
+                                </tr>
+                            `;
+                        } catch (e) {
+                            html += `
+                                <tr>
+                                    <td><strong>${col.label}</strong><br><span style="font-size:0.75rem;color:var(--text-light);">${col.name}</span></td>
+                                    <td style="color:#e74c3c;">Error</td>
+                                    <td>—</td>
+                                    <td><button class="btn btn-sm btn-outline" disabled>Export</button></td>
+                                </tr>
+                            `;
+                            console.warn(`Error loading ${col.name}:`, e);
+                        }
+                    }
+
+                    // Add summary row
+                    html += `
+                        <tr style="background:#f8fafc;font-weight:600;border-top:2px solid #dde2e9;">
+                            <td><i class="fas fa-database"></i> TOTAL</td>
+                            <td style="font-size:1.2rem;">${totalDocs}</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    `;
+
+                    tbody.innerHTML = html;
+
+                    // Export function (global)
+                    window.exportCollection = async (collectionName) => {
+                        try {
+                            showToast(`Exporting ${collectionName}...`, 'info');
+                            const snap = await db.collection(collectionName).get();
+                            const docs = [];
+                            snap.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+                            const blob = new Blob([JSON.stringify(docs, null, 2)], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${collectionName}-${new Date().toISOString().slice(0,10)}.json`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            showToast(`${collectionName} exported successfully! (${docs.length} documents)`);
+                        } catch (e) {
+                            showToast('Error exporting: ' + e.message, 'error');
+                        }
+                    };
+
+                } catch (e) {
+                    console.warn('Error loading data collections:', e);
+                    document.getElementById('dataTable').innerHTML = `
+                        <tr><td colspan="4" style="text-align:center;color:#e74c3c;padding:40px;">
+                            <i class="fas fa-exclamation-circle" style="font-size:1.5rem;display:block;margin-bottom:10px;"></i>
+                            Error loading collections: ${e.message}
+                        </td></tr>
+                    `;
+                }
+            }
+
+            // Re-export loadDataCollections
+            window.loadDataCollections = loadDataCollections;
+        });
+    </script>
+</body>
+</html>
