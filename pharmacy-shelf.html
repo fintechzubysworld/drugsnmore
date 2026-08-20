@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pharmacy Shelf · Drugs n' More</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="common.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
 </head>
@@ -92,10 +92,10 @@
     <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
         <div class="login-box">
             <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
-            <div class="default-creds"><strong>Default Admin:</strong> admin@drugsnmore.com / admin123</div>
+            <div class="default-creds"><strong>Default Super Admin:</strong> superadmin@drugsnmore.com / superadmin123</div>
             <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
-            <div class="form-group"><label>Email</label><input id="loginEmail" placeholder="user@example.com" value="admin@drugsnmore.com" /></div>
-            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" value="admin123" /></div>
+            <div class="form-group"><label>Email</label><input id="loginEmail" placeholder="user@example.com" value="superadmin@drugsnmore.com" /></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••" value="superadmin123" /></div>
             <button class="btn btn-primary" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
             <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
             <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
@@ -103,8 +103,8 @@
     </div>
 
     <!-- MODAL for New Shelf Item -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal">
+    <div class="modal-overlay" id="modalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999;">
+        <div class="modal" style="background:#fff;border-radius:14px;max-width:640px;width:94%;max-height:90vh;overflow-y:auto;padding:28px 32px;">
             <div class="modal-header">
                 <h3>Add Shelf Item</h3>
                 <button class="close" id="modalClose">&times;</button>
@@ -116,7 +116,7 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Quantity</label><input id="shQty" type="number" value="0" min="0" /></div>
-                    <div class="form-group"><label>Price ($)</label><input id="shPrice" type="number" step="0.01" value="0" min="0" /></div>
+                    <div class="form-group"><label>Price (per unit)</label><input id="shPrice" type="number" step="0.01" value="0" min="0" /></div>
                 </div>
                 <div class="form-group"><label>Shelf</label><input id="shShelf" placeholder="A-01" /></div>
                 <button class="btn btn-primary" id="saveShBtn"><i class="fas fa-save"></i> Add Item</button>
@@ -140,7 +140,6 @@
 
             newBtn.addEventListener('click', () => {
                 modal.style.display = 'flex';
-                // Clear fields with defaults
                 document.getElementById('shCode').value = '';
                 document.getElementById('shItem').value = '';
                 document.getElementById('shQty').value = '0';
@@ -169,7 +168,6 @@
                     return;
                 }
 
-                // Auto-generate code if not provided
                 const finalCode = code || 'SH-' + Date.now().toString(36).toUpperCase();
 
                 try {
@@ -210,7 +208,7 @@
                                 <td><strong>${d.code || '—'}</strong></td>
                                 <td>${d.item || '—'}</td>
                                 <td>${d.qty || 0}</td>
-                                <td>$${(d.price || 0).toFixed(2)}</td>
+                                <td>${formatCurrency(d.price || 0)}</td>
                                 <td>${d.shelf || 'A-01'}</td>
                                 <td>
                                     <button class="btn btn-sm btn-danger" onclick="deleteShelfItem('${doc.id}')"><i class="fas fa-trash"></i></button>
@@ -220,7 +218,6 @@
                     });
                     tbody.innerHTML = html;
 
-                    // Delete function
                     window.deleteShelfItem = async (id) => {
                         if (!confirm('Delete this item from shelf?')) return;
                         try {
@@ -237,7 +234,6 @@
                 }
             }
 
-            // Re-export loadShelf
             window.loadShelf = loadShelf;
         });
     </script>
