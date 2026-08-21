@@ -14,11 +14,10 @@
     <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
     <div class="login-box" style="margin:auto;">
         <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
-        <div class="default-creds">
-        </div>
+        <!-- Removed hard-coded credentials -->
         <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
-        <div class="form-group"><label>Email</label><input id="loginEmail" placeholder="user@example.com"/></div>
-        <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="••••••••"/></div>
+        <div class="form-group"><label>Email</label><input id="loginEmail" type="email" placeholder="Enter your email" /></div>
+        <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="Enter your password" /></div>
         <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;"><i class="fas fa-sign-in-alt"></i> Sign In</button>
         <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
         <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
