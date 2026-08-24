@@ -9,15 +9,8 @@ const firebaseConfig = {
     measurementId: "G-HV3GYSY6CK"
 };
 
-// Check if Firebase is already initialized (avoids duplicate init errors)
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-const auth = firebase.auth();
-const db = firebase.firestore();
-
 // ============================================================
-//  ROLE CONSTANTS – defined at the top for global access
+//  ROLE CONSTANTS – defined first so they are available globally
 // ============================================================
 const ROLES = {
     SYSTEMS_ADMIN: 'systems_administrator',
@@ -28,7 +21,8 @@ const ROLES = {
 };
 
 // ============================================================
-//  PERMISSION HELPERS (must be defined before initAuth)
+//  PERMISSION HELPERS – defined immediately after constants
+//  (Using function declarations to ensure hoisting)
 // ============================================================
 function isSystemsAdmin(role) {
     return role === ROLES.SYSTEMS_ADMIN || role === 'superadmin';
@@ -73,6 +67,15 @@ function canAccessSystemConfig(role) {
 function canAccessSuperAdmin(role) {
     return isSystemsAdmin(role);
 }
+
+// ============================================================
+//  FIREBASE INITIALIZATION – safe to use helpers now
+// ============================================================
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 // ----- GLOBAL STATE -----
 let currentUser = null;
