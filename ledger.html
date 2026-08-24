@@ -31,6 +31,26 @@
             background: #f8fafc;
             border-radius: 8px;
             text-align: right;
+            margin-top: 16px;
+        }
+        .chip {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: #eef1f5;
+        }
+        .chip-receivable { background: #cce5ff; color: #004085; }
+        .chip-payment { background: #d4edda; color: #155724; }
+        .chip-shipment { background: #fff3cd; color: #856404; }
+        .chip-return { background: #f8d7da; color: #721c24; }
+        .chip-other { background: #eef1f5; color: #5a6f8a; }
+        .ledger-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
         }
     </style>
 </head>
@@ -93,9 +113,10 @@
             <div class="page-header">
                 <h2>Ledger</h2>
                 <span class="sub">Complete financial record</span>
-                <div class="actions">
+                <div class="actions ledger-actions">
                     <button class="btn btn-outline" id="exportLedgerBtn"><i class="fas fa-download"></i> Export</button>
                     <button class="btn btn-outline" id="refreshBtn"><i class="fas fa-sync"></i> Refresh</button>
+                    <button class="btn btn-outline" id="printLedgerBtn"><i class="fas fa-print"></i> Print</button>
                 </div>
             </div>
 
@@ -141,13 +162,15 @@
                     </table>
                 </div>
                 <div class="ledger-total" id="ledgerTotal">
-                    Balance: $0.00
+                    <strong>Total Debit:</strong> <span id="totalDebitDisplay">0.00</span> &nbsp;|&nbsp; 
+                    <strong>Total Credit:</strong> <span id="totalCreditDisplay">0.00</span> &nbsp;|&nbsp; 
+                    <strong>Balance:</strong> <span id="balanceDisplay" style="color:var(--primary);">0.00</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- LOGIN OVERLAY -->
+    <!-- LOGIN OVERLAY (hidden by default) -->
     <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
         <div class="login-box">
             <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
@@ -163,6 +186,7 @@
     <script src="common.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize auth
             initAuth(() => { loadLedger(); });
             attachLoginHandlers();
 
@@ -174,6 +198,7 @@
             const clearBtn = document.getElementById('clearFilterBtn');
             const refreshBtn = document.getElementById('refreshBtn');
             const exportBtn = document.getElementById('exportLedgerBtn');
+            const printBtn = document.getElementById('printLedgerBtn');
 
             // --- Refresh ---
             refreshBtn.addEventListener('click', () => {
@@ -192,6 +217,11 @@
                 filterDateFrom.value = '';
                 filterDateTo.value = '';
                 loadLedger();
+            });
+
+            // --- Print ---
+            printBtn.addEventListener('click', () => {
+                window.print();
             });
 
             // --- Export ---
@@ -224,11 +254,6 @@
                         query = query.where('entryType', '==', type);
                     }
 
-                    const fromDate = filterDateFrom.value;
-                    const toDate = filterDateTo.value;
-                    // Note: Firestore can't do range queries on server timestamps easily,
-                    // so we'll filter client-side. But we'll order by date.
-
                     query = query.orderBy('date', 'desc');
 
                     const snap = await query.get();
@@ -236,7 +261,10 @@
 
                     if (snap.empty) {
                         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);">No ledger entries found</td></tr>';
-                        document.getElementById('ledgerTotal').textContent = 'Balance: $0.00';
+                        document.getElementById('totalDebitDisplay').textContent = formatCurrency(0);
+                        document.getElementById('totalCreditDisplay').textContent = formatCurrency(0);
+                        document.getElementById('balanceDisplay').textContent = formatCurrency(0);
+                        document.getElementById('balanceDisplay').style.color = 'var(--text-light)';
                         return;
                     }
 
@@ -246,15 +274,14 @@
                         const d = doc.data();
                         const entryDate = d.date?.toDate?.();
                         if (entryDate) {
-                            // Client-side filter by date
-                            if (fromDate && entryDate < new Date(fromDate)) return;
-                            if (toDate && entryDate > new Date(toDate + 'T23:59:59')) return;
+                            if (filterDateFrom.value && entryDate < new Date(filterDateFrom.value)) return;
+                            if (filterDateTo.value && entryDate > new Date(filterDateTo.value + 'T23:59:59')) return;
                         }
                         entries.push({
                             id: doc.id,
                             date: entryDate || new Date(),
                             description: d.description || '—',
-                            entryType: d.entryType || '—',
+                            entryType: d.entryType || 'other',
                             debit: d.debit || 0,
                             credit: d.credit || 0
                         });
@@ -263,13 +290,20 @@
                     // Sort by date descending (newest first)
                     entries.sort((a, b) => b.date - a.date);
 
-                    let html = '';
+                    if (entries.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);">No entries match the filters.</td></tr>';
+                        document.getElementById('totalDebitDisplay').textContent = formatCurrency(0);
+                        document.getElementById('totalCreditDisplay').textContent = formatCurrency(0);
+                        document.getElementById('balanceDisplay').textContent = formatCurrency(0);
+                        document.getElementById('balanceDisplay').style.color = 'var(--text-light)';
+                        return;
+                    }
+
+                    // Compute running balances (oldest to newest)
+                    const reversed = [...entries].reverse();
                     let runningBalance = 0;
                     let totalDebit = 0;
                     let totalCredit = 0;
-
-                    // Compute from oldest to newest for correct balance
-                    const reversed = [...entries].reverse();
 
                     const typeLabels = {
                         'receivable': 'Receivable',
@@ -279,42 +313,40 @@
                         '': '—'
                     };
 
+                    const typeClasses = {
+                        'receivable': 'chip-receivable',
+                        'payment': 'chip-payment',
+                        'shipment': 'chip-shipment',
+                        'return': 'chip-return',
+                        '': 'chip-other',
+                        'other': 'chip-other'
+                    };
+
+                    // Build display rows with calculated balances
+                    const displayRows = [];
                     reversed.forEach(entry => {
                         runningBalance += entry.debit - entry.credit;
                         totalDebit += entry.debit;
                         totalCredit += entry.credit;
-                    });
-
-                    // Now display (newest first)
-                    entries.forEach(entry => {
-                        const balance = runningBalance;
-                        // Running balance calculation: we need to work backwards
-                        // We'll compute differently: use the reversed array.
-                        // Actually simpler: iterate reversed and then display
-                    });
-
-                    // Rebuild the display using the correctly computed balance
-                    let balanceDisplay = 0;
-                    const reversedDisplay = [...entries].reverse();
-                    const displayRows = [];
-                    reversedDisplay.forEach(entry => {
-                        balanceDisplay += entry.debit - entry.credit;
-                        const typeLabel = typeLabels[entry.entryType] || entry.entryType;
                         displayRows.push({
                             ...entry,
-                            balance: balanceDisplay,
-                            typeLabel: typeLabel
+                            balance: runningBalance,
+                            typeLabel: typeLabels[entry.entryType] || entry.entryType || 'Other',
+                            typeClass: typeClasses[entry.entryType] || 'chip-other'
                         });
                     });
 
                     // Display in reverse order (newest first)
-                    displayRows.reverse().forEach(entry => {
+                    displayRows.reverse();
+
+                    let html = '';
+                    displayRows.forEach(entry => {
                         const balanceColor = entry.balance >= 0 ? 'var(--primary)' : '#e74c3c';
                         html += `
                             <tr>
                                 <td>${entry.date.toLocaleString()}</td>
                                 <td>${entry.description}</td>
-                                <td><span class="chip">${entry.typeLabel}</span></td>
+                                <td><span class="chip ${entry.typeClass}">${entry.typeLabel}</span></td>
                                 <td style="color:#28a745;">${entry.debit > 0 ? formatCurrency(entry.debit) : '—'}</td>
                                 <td style="color:#e74c3c;">${entry.credit > 0 ? formatCurrency(entry.credit) : '—'}</td>
                                 <td style="font-weight:600;color:${balanceColor};">${formatCurrency(entry.balance)}</td>
@@ -322,19 +354,15 @@
                         `;
                     });
 
-                    if (html === '') {
-                        html = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);">No ledger entries match the filters.</td></tr>';
-                    }
-
                     tbody.innerHTML = html;
 
-                    // Update total
+                    // Update totals using the system currency
                     const finalBalance = totalDebit - totalCredit;
-                    document.getElementById('ledgerTotal').innerHTML = `
-                        <strong>Total Debit:</strong> ${formatCurrency(totalDebit)} &nbsp;|&nbsp; 
-                        <strong>Total Credit:</strong> ${formatCurrency(totalCredit)} &nbsp;|&nbsp; 
-                        <strong>Balance:</strong> <span style="color:${finalBalance >= 0 ? 'var(--primary)' : '#e74c3c'};">${formatCurrency(finalBalance)}</span>
-                    `;
+                    document.getElementById('totalDebitDisplay').textContent = formatCurrency(totalDebit);
+                    document.getElementById('totalCreditDisplay').textContent = formatCurrency(totalCredit);
+                    const balanceEl = document.getElementById('balanceDisplay');
+                    balanceEl.textContent = formatCurrency(finalBalance);
+                    balanceEl.style.color = finalBalance >= 0 ? 'var(--primary)' : '#e74c3c';
 
                 } catch (e) {
                     console.warn('Error loading ledger:', e);
