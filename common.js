@@ -10,54 +10,82 @@ const firebaseConfig = {
 };
 
 // ============================================================
-//  ROLE CONSTANTS – defined first so they are available globally
+//  ROLE CONSTANTS & HIERARCHY
 // ============================================================
 const ROLES = {
     SYSTEMS_ADMIN: 'systems_administrator',
+    ADMIN: 'admin',
     MANAGER: 'manager',
     SUPERVISOR: 'supervisor',
-    ADMIN: 'admin',        // legacy
     USER: 'user'
 };
 
+// Role order (higher number = higher privilege)
+const ROLE_ORDER = {
+    [ROLES.SYSTEMS_ADMIN]: 5,
+    [ROLES.ADMIN]: 4,
+    [ROLES.MANAGER]: 3,
+    [ROLES.SUPERVISOR]: 2,
+    [ROLES.USER]: 1
+};
+
 // ============================================================
-//  PERMISSION HELPERS – defined immediately after constants
-//  (Using function declarations to ensure hoisting)
+//  PERMISSION HELPERS (based on hierarchy)
 // ============================================================
+function getRoleLevel(role) {
+    return ROLE_ORDER[role] || 0;
+}
+
+function isRoleHigherOrEqual(viewerRole, targetRole) {
+    return getRoleLevel(viewerRole) >= getRoleLevel(targetRole);
+}
+
+function isRoleHigher(viewerRole, targetRole) {
+    return getRoleLevel(viewerRole) > getRoleLevel(targetRole);
+}
+
 function isSystemsAdmin(role) {
     return role === ROLES.SYSTEMS_ADMIN || role === 'superadmin';
 }
 
 function isAdmin(role) {
-    return role === ROLES.SYSTEMS_ADMIN || role === ROLES.MANAGER || role === ROLES.ADMIN || role === 'superadmin';
+    return role === ROLES.ADMIN || role === ROLES.SYSTEMS_ADMIN || role === 'superadmin';
 }
 
 function isManager(role) {
-    return role === ROLES.MANAGER || role === ROLES.ADMIN || role === 'superadmin';
+    return role === ROLES.MANAGER;
 }
 
 function isSupervisor(role) {
     return role === ROLES.SUPERVISOR;
 }
 
-function canManageUsers(role) {
-    return isAdmin(role) || isSystemsAdmin(role) || isManager(role);
-}
-
+// ----- Permission checks -----
 function canCreateUsers(role) {
-    return isAdmin(role) || isSystemsAdmin(role) || isManager(role);
+    // Only Systems Admin and Admin can create users
+    return isSystemsAdmin(role) || role === ROLES.ADMIN;
 }
 
-function canDeleteUsers(role) {
-    return isAdmin(role) || isSystemsAdmin(role) || isManager(role);
+function canManageUser(viewerRole, targetRole) {
+    // Viewer must have higher role than target (cannot manage same or higher)
+    return isRoleHigher(viewerRole, targetRole);
 }
 
-function canEditUsers(role) {
-    return isAdmin(role) || isSystemsAdmin(role) || isManager(role);
+function canDeleteUser(viewerRole, targetRole) {
+    // Systems Admin, Admin, Manager can delete lower roles
+    return (isSystemsAdmin(viewerRole) || viewerRole === ROLES.ADMIN || viewerRole === ROLES.MANAGER) 
+           && isRoleHigher(viewerRole, targetRole);
 }
 
-function canResetPasswords(role) {
-    return isAdmin(role) || isSystemsAdmin(role) || isManager(role) || isSupervisor(role);
+function canEditUser(viewerRole, targetRole) {
+    // Same as delete
+    return canDeleteUser(viewerRole, targetRole);
+}
+
+function canResetPassword(viewerRole, targetRole) {
+    // Systems Admin, Admin, Manager, Supervisor can reset lower roles
+    return (isSystemsAdmin(viewerRole) || viewerRole === ROLES.ADMIN || viewerRole === ROLES.MANAGER || viewerRole === ROLES.SUPERVISOR)
+           && isRoleHigher(viewerRole, targetRole);
 }
 
 function canAccessSystemConfig(role) {
@@ -69,7 +97,18 @@ function canAccessSuperAdmin(role) {
 }
 
 // ============================================================
-//  FIREBASE INITIALIZATION – safe to use helpers now
+//  HIERARCHY FOR VIEWING USERS
+// ============================================================
+function getVisibleRoles(role) {
+    // Returns an array of roles that the given role can view.
+    // Includes the viewer's own role and all lower roles.
+    const allRoles = Object.values(ROLES);
+    const viewerLevel = getRoleLevel(role);
+    return allRoles.filter(r => getRoleLevel(r) <= viewerLevel);
+}
+
+// ============================================================
+//  FIREBASE INITIALIZATION
 // ============================================================
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
@@ -152,14 +191,12 @@ async function seedAdmin() {
     const adminPass = 'systemsadmin123';
     
     try {
-        // Check if any user exists in Firestore
         const snap = await db.collection('users').limit(1).get();
         if (!snap.empty) {
             console.log('✅ Users exist – skipping seed');
             return;
         }
         
-        // No users found – create the systems administrator
         console.log('🔨 Creating systems administrator...');
         const cred = await auth.createUserWithEmailAndPassword(adminEmail, adminPass);
         await cred.user.updateProfile({ displayName: 'Systems Administrator' });
@@ -170,7 +207,6 @@ async function seedAdmin() {
             branch: 'Headquarters',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        // Set default currency in config
         await db.collection('config').doc('system').set({
             currency: '$'
         }, { merge: true });
@@ -190,16 +226,13 @@ function initAuth(callback) {
             if (displayEl) displayEl.textContent = user.displayName || user.email || 'User';
             showApp();
             
-            // Load currency
             await loadCurrency();
             
-            // Fetch or create user role
             try {
                 const doc = await db.collection('users').doc(user.uid).get();
                 if (doc.exists) {
                     currentUserRole = doc.data().role || ROLES.USER;
                 } else {
-                    // Create user document if missing
                     await db.collection('users').doc(user.uid).set({
                         email: user.email,
                         role: ROLES.USER,
@@ -216,7 +249,7 @@ function initAuth(callback) {
             // Show/hide sidebar links based on role
             const canAccessSysConfig = canAccessSystemConfig(currentUserRole);
             const canAccessSuperAdmin = canAccessSuperAdmin(currentUserRole);
-            const canAccessAdminPages = isAdmin(currentUserRole) || isSystemsAdmin(currentUserRole) || isManager(currentUserRole);
+            const canAccessAdminPages = isAdmin(currentUserRole) || isSystemsAdmin(currentUserRole);
             
             document.querySelectorAll('.sidebar-nav a[href="super-admin.html"]')
                 .forEach(el => el.style.display = canAccessSuperAdmin ? 'flex' : 'none');
@@ -231,7 +264,6 @@ function initAuth(callback) {
             currentUser = null;
             currentUserRole = ROLES.USER;
             showLogin();
-            // Only seed admin when no user is logged in
             seedAdmin();
         }
     });
@@ -318,7 +350,6 @@ function attachLoginHandlers() {
         });
     }
 
-    // Menu toggle for mobile
     const menuToggle = document.getElementById('menuToggle');
     if (menuToggle) {
         menuToggle.addEventListener('click', () => {
@@ -326,7 +357,6 @@ function attachLoginHandlers() {
         });
     }
 
-    // Notification icon
     const notifIcon = document.getElementById('notifIcon');
     if (notifIcon) {
         notifIcon.addEventListener('click', () => {
@@ -349,16 +379,21 @@ window.formatCurrency = formatCurrency;
 window.getCurrency = getCurrency;
 window.currentCurrency = () => currentCurrency;
 
-// Expose role helpers
+// Expose role helpers and hierarchy functions
 window.ROLES = ROLES;
+window.ROLE_ORDER = ROLE_ORDER;
+window.getRoleLevel = getRoleLevel;
+window.isRoleHigherOrEqual = isRoleHigherOrEqual;
+window.isRoleHigher = isRoleHigher;
 window.isSystemsAdmin = isSystemsAdmin;
 window.isAdmin = isAdmin;
 window.isManager = isManager;
 window.isSupervisor = isSupervisor;
-window.canManageUsers = canManageUsers;
 window.canCreateUsers = canCreateUsers;
-window.canDeleteUsers = canDeleteUsers;
-window.canEditUsers = canEditUsers;
-window.canResetPasswords = canResetPasswords;
+window.canManageUser = canManageUser;
+window.canDeleteUser = canDeleteUser;
+window.canEditUser = canEditUser;
+window.canResetPassword = canResetPassword;
 window.canAccessSystemConfig = canAccessSystemConfig;
 window.canAccessSuperAdmin = canAccessSuperAdmin;
+window.getVisibleRoles = getVisibleRoles;
