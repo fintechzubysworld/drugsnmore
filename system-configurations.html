@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>System Configurations · Drugs n' More</title>
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -89,7 +90,7 @@
             <div class="nav-label">Admin</div>
             <a href="users.html"><i class="fas fa-users"></i> Users</a>
             <a href="admin.html"><i class="fas fa-user-shield"></i> Admin</a>
-            <a href="super-admin.html"><i class="fas fa-crown"></i> Super Admin</a>
+            <a href="super-admin.html"><i class="fas fa-crown"></i> Systems Admin</a>
             <a href="system-configurations.html" class="active"><i class="fas fa-cog"></i> System Config</a>
             <div class="nav-label">Reporting</div>
             <a href="reports.html"><i class="fas fa-chart-bar"></i> Reports</a>
@@ -120,7 +121,7 @@
         <div class="content" id="configContent">
             <div class="page-header">
                 <h2>System Configurations</h2>
-                <span class="sub">Super Admin only — requires authentication to modify</span>
+                <span class="sub">Systems Administrator only — requires authentication to modify</span>
             </div>
 
             <!-- Authentication required -->
@@ -171,6 +172,8 @@
                         <div class="form-group"><label>Default Role for New Users</label>
                             <select id="cfgDefaultRole">
                                 <option value="user">User</option>
+                                <option value="supervisor">Supervisor</option>
+                                <option value="manager">Manager</option>
                                 <option value="admin">Admin</option>
                             </select>
                         </div>
@@ -274,7 +277,7 @@
                         </div>
                     </div>
 
-                    <!-- 🔥 NEW: Currency Settings -->
+                    <!-- Currency Settings -->
                     <div class="config-section" style="border-color: var(--primary);">
                         <div class="section-title"><i class="fas fa-coins"></i> Currency Settings</div>
                         <div class="form-group">
@@ -319,32 +322,34 @@
         </div>
     </div>
 
-   <!-- LOGIN OVERLAY (hidden by default) -->
-<div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
-    <div class="login-box">
-        <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
-        <!-- No hard-coded credentials -->
-        <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
-        <div class="form-group"><label>Email</label><input id="loginEmail" type="email" placeholder="Enter your email" /></div>
-        <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="Enter your password" /></div>
-        <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;"><i class="fas fa-sign-in-alt"></i> Sign In</button>
-        <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
-        <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
+    <!-- LOGIN OVERLAY (hidden by default) -->
+    <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
+        <div class="login-box">
+            <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
+            <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
+            <div class="form-group"><label>Email</label><input id="loginEmail" type="email" placeholder="Enter your email" /></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="Enter your password" /></div>
+            <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+            <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
+            <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
+        </div>
     </div>
-</div>
 
     <script src="common.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             let isAuthenticated = false;
 
+            // ----- INIT AUTH & CHECK PERMISSIONS -----
             initAuth((user) => {
-                if (currentUserRole !== 'superadmin') {
+                const role = currentUserRole();
+                // Check if user is Systems Administrator
+                if (!isSystemsAdmin(role)) {
                     document.getElementById('configContent').innerHTML = `
                         <div class="page-header"><h2>Access Denied</h2></div>
                         <div class="card" style="text-align:center;padding:40px;">
                             <i class="fas fa-ban" style="font-size:3rem;color:#e74c3c;display:block;margin-bottom:16px;"></i>
-                            <h3>Super Admin Only</h3>
+                            <h3>Systems Administrator Only</h3>
                             <p style="color:var(--text-light);">You do not have permission to access system configurations.</p>
                             <button class="btn btn-outline" onclick="location.href='index.html'" style="margin-top:16px;">
                                 <i class="fas fa-arrow-left"></i> Go to Dashboard
@@ -353,11 +358,12 @@
                     `;
                     return;
                 }
+                // Load config values
                 loadConfigValues();
             });
             attachLoginHandlers();
 
-            // Authenticate
+            // ----- AUTHENTICATE BUTTON -----
             document.getElementById('configAuthBtn').addEventListener('click', async function() {
                 const pass = document.getElementById('configAuthPass').value;
                 const errorEl = document.getElementById('authError');
@@ -389,7 +395,7 @@
                 if (e.key === 'Enter') document.getElementById('configAuthBtn').click();
             });
 
-            // Load config values
+            // ----- LOAD CONFIG VALUES -----
             async function loadConfigValues() {
                 try {
                     const doc = await db.collection('config').doc('system').get();
@@ -413,7 +419,6 @@
                         document.getElementById('cfgPassExpiry').value = d.passExpiry || '90';
                         document.getElementById('cfg2FA').value = d.twoFA || 'no';
                         document.getElementById('cfgSessionTimeout').value = d.sessionTimeout || '30';
-                        // Currency
                         document.getElementById('cfgCurrency').value = d.currency || '$';
                     } else {
                         setDefaultConfig();
@@ -446,7 +451,7 @@
                 document.getElementById('cfgCurrency').value = '$';
             }
 
-            // Save All Settings (including currency)
+            // ----- SAVE ALL SETTINGS -----
             document.getElementById('saveAllConfigBtn').addEventListener('click', async function() {
                 if (!isAuthenticated) {
                     showToast('Please authenticate first', 'error');
@@ -471,7 +476,7 @@
                     passExpiry: parseInt(document.getElementById('cfgPassExpiry').value) || 90,
                     twoFA: document.getElementById('cfg2FA').value,
                     sessionTimeout: parseInt(document.getElementById('cfgSessionTimeout').value) || 30,
-                    currency: document.getElementById('cfgCurrency').value, // 🔥 Currency saved here
+                    currency: document.getElementById('cfgCurrency').value,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 try {
@@ -484,13 +489,13 @@
                 }
             });
 
-            // Refresh button
+            // ----- REFRESH -----
             document.getElementById('refreshConfigBtn').addEventListener('click', function() {
                 loadConfigValues();
                 showToast('Settings refreshed', 'info');
             });
 
-            // Data Wipe
+            // ----- DATA WIPE -----
             document.getElementById('cfgWipeBtn').addEventListener('click', async function() {
                 if (!isAuthenticated) {
                     showToast('Please authenticate first', 'error');
