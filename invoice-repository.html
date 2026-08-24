@@ -107,6 +107,14 @@
             .no-print { display: none !important; }
             .print-invoice { padding: 20px; }
             .print-invoice .header { border-bottom-color: #000; }
+            .modal-overlay { background: none !important; }
+            .modal { box-shadow: none !important; max-width: 100% !important; width: 100% !important; }
+            .modal-header { display: none !important; }
+            body * { visibility: hidden; }
+            .print-invoice, .print-invoice * { visibility: visible; }
+            .print-invoice { position: absolute; left: 0; top: 0; width: 100%; }
+            #viewModal { display: block !important; background: white !important; }
+            #viewModal .modal { margin: 0; padding: 20px; border-radius: 0; }
         }
         .import-area {
             border: 2px dashed #dde2e9;
@@ -271,20 +279,15 @@
                 <button class="close" id="modalClose">&times;</button>
             </div>
             <div id="modalBody">
-                <!-- Supplier -->
                 <div class="form-group">
                     <label>Supplier</label>
                     <input id="invSupplier" placeholder="Supplier name" />
                 </div>
-
-                <!-- Import area -->
                 <div class="import-area" id="importArea">
                     <i class="fas fa-upload" style="font-size:1.5rem;display:block;margin-bottom:8px;color:var(--primary);"></i>
                     <p style="color:var(--text-light);">Click to import CSV, Excel, or JSON</p>
                     <input type="file" id="fileInput" accept=".csv,.xlsx,.json" />
                 </div>
-
-                <!-- Sheet grid -->
                 <div style="margin:16px 0;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                         <strong>Invoice Items</strong>
@@ -318,8 +321,6 @@
                         </table>
                     </div>
                 </div>
-
-                <!-- Status & Save -->
                 <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;">
                     <div style="flex:1;">
                         <div class="form-group">
@@ -371,7 +372,6 @@
             const importArea = document.getElementById('importArea');
             const fileInput = document.getElementById('fileInput');
 
-            // View modal
             const viewModal = document.getElementById('viewModal');
             const viewClose = document.getElementById('viewModalClose');
             const printBtn = document.getElementById('printInvoiceBtn');
@@ -399,7 +399,7 @@
                     document.getElementById('invSupplier').value = '';
                     document.getElementById('invStatus').value = 'pending';
                     invoiceRows = [];
-                    addInvoiceRow(); // first row
+                    addInvoiceRow();
                     renderInvoiceSheet();
                 });
             }
@@ -422,9 +422,10 @@
                 });
             }
 
-            // --- Print invoice ---
+            // --- Print invoice (browser print) ---
             if (printBtn) {
-                printBtn.addEventListener('click', () => {
+                printBtn.addEventListener('click', function() {
+                    // Trigger browser print
                     window.print();
                 });
             }
@@ -530,7 +531,7 @@
                     return;
                 }
                 invoiceRows = [];
-                data.forEach((row, index) => {
+                data.forEach((row) => {
                     const item = row.item || row.Item || row.ITEM || '';
                     if (!item) return;
                     invoiceRows.push({
@@ -603,7 +604,6 @@
                 });
                 sheetBody.innerHTML = html;
 
-                // Attach input events
                 sheetBody.querySelectorAll('input').forEach(input => {
                     input.addEventListener('input', function(e) {
                         const tr = this.closest('tr');
@@ -701,6 +701,9 @@
                     const grandTotal = subtotal - totalDiscount + totalVat;
                     const status = document.getElementById('invStatus').value;
 
+                    // Get user display name or email for "created by"
+                    const creatorName = currentUser?.displayName || currentUser?.email || 'System';
+
                     try {
                         await db.collection('invoices').add({
                             supplier: supplier,
@@ -718,7 +721,7 @@
                             totalVat: totalVat,
                             amount: grandTotal,
                             status: status,
-                            createdBy: currentUser?.uid || 'system',
+                            createdBy: creatorName,  // now stores name/email, not UID
                             createdAt: firebase.firestore.FieldValue.serverTimestamp()
                         });
                         showToast('Invoice created!');
@@ -783,7 +786,7 @@
 
                             let itemsHtml = '';
                             if (d.items && Array.isArray(d.items)) {
-                                d.items.forEach((item, idx) => {
+                                d.items.forEach((item) => {
                                     const amount = (item.qty || 0) * (item.price || 0);
                                     const discount = amount * ((item.discount || 0) / 100);
                                     const vat = (amount - discount) * ((item.vat || 0) / 100);
@@ -805,6 +808,8 @@
                             }
 
                             const statusBadge = d.status === 'paid' ? 'badge-success' : 'badge-warning';
+                            // Show creator name (now stored as name/email)
+                            const createdBy = d.createdBy || 'System';
                             const viewHtml = `
                                 <div class="print-invoice" id="printArea">
                                     <div class="header">
@@ -822,7 +827,7 @@
                                         </div>
                                         <div style="text-align:right;">
                                             <strong>Invoice #:</strong> ${id.slice(0,8).toUpperCase()}<br />
-                                            <strong>Created by:</strong> ${d.createdBy || 'system'}
+                                            <strong>Created by:</strong> ${createdBy}
                                         </div>
                                     </div>
                                     <table>
@@ -854,11 +859,10 @@
                             viewBody.innerHTML = viewHtml;
                             viewModal.style.display = 'flex';
 
-                            if (printBtn) {
-                                printBtn.onclick = function() {
-                                    window.print();
-                                };
-                            }
+                            // Ensure print button triggers browser print
+                            printBtn.onclick = function() {
+                                window.print();
+                            };
                         } catch (e) {
                             showToast(e.message, 'error');
                         }
@@ -900,7 +904,6 @@
                             if (!doc.exists) return showToast('Invoice not found', 'error');
                             const d = doc.data();
 
-                            // Build data array (flatten items)
                             const rows = [];
                             if (d.items && Array.isArray(d.items)) {
                                 d.items.forEach((item, idx) => {
@@ -925,7 +928,6 @@
                                 rows.push({ 'Item': 'No items', 'Qty': 0, 'Price': 0, 'Total': 0 });
                             }
 
-                            // Add summary row
                             rows.push({
                                 'Item #': '',
                                 'Code': '',
@@ -939,23 +941,23 @@
                                 'Total': d.amount || 0
                             });
 
-                            // Add extra metadata at the end
                             const metaRows = [
                                 { 'Item': 'SUPPLIER', 'Item #': d.supplier || '' },
                                 { 'Item': 'STATUS', 'Item #': d.status || '' },
                                 { 'Item': 'DATE', 'Item #': d.createdAt?.toDate?.()?.toLocaleString() || '' },
-                                { 'Item': 'INVOICE #', 'Item #': id.slice(0,8).toUpperCase() }
+                                { 'Item': 'INVOICE #', 'Item #': id.slice(0,8).toUpperCase() },
+                                { 'Item': 'CREATED BY', 'Item #': d.createdBy || 'System' }
                             ];
                             metaRows.forEach(m => rows.push(m));
 
                             const filename = `invoice_${id.slice(0,8)}_${new Date().toISOString().slice(0,10)}`;
 
                             if (format === 'json') {
-                                // Export as JSON
                                 const jsonData = {
                                     id: id,
                                     supplier: d.supplier,
                                     status: d.status,
+                                    createdBy: d.createdBy || 'System',
                                     date: d.createdAt?.toDate?.()?.toISOString(),
                                     subtotal: d.subtotal,
                                     totalDiscount: d.totalDiscount,
@@ -972,7 +974,6 @@
                                 URL.revokeObjectURL(url);
                                 showToast('JSON exported', 'success');
                             } else if (format === 'csv') {
-                                // Export as CSV
                                 const csvRows = [];
                                 const headers = Object.keys(rows[0]);
                                 csvRows.push(headers.join(','));
@@ -993,7 +994,6 @@
                                 URL.revokeObjectURL(url);
                                 showToast('CSV exported', 'success');
                             } else if (format === 'excel') {
-                                // Export as Excel using SheetJS
                                 const wb = XLSX.utils.book_new();
                                 const ws = XLSX.utils.json_to_sheet(rows);
                                 XLSX.utils.book_append_sheet(wb, ws, 'Invoice');
