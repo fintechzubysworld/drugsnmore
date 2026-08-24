@@ -89,7 +89,7 @@
         </div>
     </div>
 
-    <!-- LOGIN OVERLAY (hidden by default) -->
+    <!-- LOGIN OVERLAY (hidden) -->
     <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
         <div class="login-box">
             <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
@@ -115,11 +115,14 @@
                 <div class="form-group"><label>Role</label>
                     <select id="newUserRole">
                         <option value="user">User</option>
-                        <option value="admin">Admin</option>
+                        <option value="supervisor">Supervisor</option>
+                        <option value="manager">Manager</option>
+                        <!-- systems_administrator can only be assigned by systems_administrator -->
+                        <!-- but we'll add it dynamically based on current user role -->
                     </select>
                 </div>
                 <div class="form-group" style="margin-top:16px;border-top:1px solid #eef1f5;padding-top:16px;">
-                    <label style="color:var(--primary);"><i class="fas fa-shield-alt"></i> Your Admin Password</label>
+                    <label style="color:var(--primary);"><i class="fas fa-shield-alt"></i> Your Password</label>
                     <input id="adminPasswordForCreation" type="password" placeholder="Enter your password to create user" />
                     <span style="font-size:0.75rem;color:var(--text-light);">We need your password to keep you logged in.</span>
                 </div>
@@ -141,8 +144,8 @@
                 <div class="form-group"><label>Role</label>
                     <select id="editUserRole">
                         <option value="user">User</option>
-                        <option value="admin">Admin</option>
-                        <!-- superadmin can only be set via super-admin page -->
+                        <option value="supervisor">Supervisor</option>
+                        <option value="manager">Manager</option>
                     </select>
                 </div>
                 <button class="btn btn-primary" id="saveEditBtn"><i class="fas fa-save"></i> Update User</button>
@@ -153,26 +156,53 @@
     <script src="common.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize auth
             initAuth(() => {
                 loadUsers();
             });
             attachLoginHandlers();
+
+            // ----- Permission helpers (using common.js helpers) -----
+            function getCurrentRole() { return currentUserRole(); }
+            const role = getCurrentRole();
 
             // ----- Add User Modal -----
             const addModal = document.getElementById('addModal');
             const addClose = document.getElementById('addModalClose');
             const newUserBtn = document.getElementById('newUserBtn');
 
+            // Dynamically populate role options
+            function populateRoleSelect(selectId, includeSystemsAdmin = false) {
+                const select = document.getElementById(selectId);
+                if (!select) return;
+                const options = [
+                    { value: 'user', label: 'User' },
+                    { value: 'supervisor', label: 'Supervisor' },
+                    { value: 'manager', label: 'Manager' }
+                ];
+                if (includeSystemsAdmin) {
+                    options.push({ value: 'systems_administrator', label: 'Systems Administrator' });
+                }
+                select.innerHTML = '';
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt.value;
+                    option.textContent = opt.label;
+                    select.appendChild(option);
+                });
+            }
+
             newUserBtn.addEventListener('click', () => {
-                if (currentUserRole !== 'superadmin' && currentUserRole !== 'admin') {
-                    showToast('Only admins can add users', 'error');
+                if (!canCreateUsers(role)) {
+                    showToast('You do not have permission to create users.', 'error');
                     return;
                 }
                 addModal.style.display = 'flex';
                 document.getElementById('newUserEmail').value = '';
                 document.getElementById('newUserPass').value = '';
                 document.getElementById('adminPasswordForCreation').value = '';
+                // Show systems_administrator option only if current user is systems_administrator
+                const includeSystemsAdmin = isSystemsAdmin(role);
+                populateRoleSelect('newUserRole', includeSystemsAdmin);
                 document.getElementById('newUserRole').value = 'user';
             });
 
@@ -183,19 +213,21 @@
             document.getElementById('saveUserBtn').addEventListener('click', async () => {
                 const email = document.getElementById('newUserEmail').value.trim();
                 const pass = document.getElementById('newUserPass').value;
-                const role = document.getElementById('newUserRole').value;
+                const newRole = document.getElementById('newUserRole').value;
                 const adminPass = document.getElementById('adminPasswordForCreation').value;
 
                 if (!email || !pass) { showToast('Please fill in email and password', 'error'); return; }
-                if (!adminPass) { showToast('Please enter your admin password', 'error'); return; }
+                if (!adminPass) { showToast('Please enter your password', 'error'); return; }
+                if (!canCreateUsers(role)) { showToast('Permission denied.', 'error'); return; }
+
                 const adminEmail = currentUser.email;
 
                 try {
                     const cred = await auth.createUserWithEmailAndPassword(email, pass);
                     await db.collection('users').doc(cred.user.uid).set({
                         email: email,
-                        role: role,
-                        displayName: email.split('@')[0], // default display name
+                        role: newRole,
+                        displayName: email.split('@')[0],
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     await auth.signOut();
@@ -204,7 +236,7 @@
                     addModal.style.display = 'none';
                     loadUsers();
                 } catch (e) {
-                    if (e.code === 'auth/wrong-password') showToast('Incorrect admin password.', 'error');
+                    if (e.code === 'auth/wrong-password') showToast('Incorrect password.', 'error');
                     else showToast(e.message, 'error');
                 }
             });
@@ -220,13 +252,25 @@
             // Save edit
             document.getElementById('saveEditBtn').addEventListener('click', async () => {
                 const displayName = document.getElementById('editDisplayName').value.trim();
-                const role = document.getElementById('editUserRole').value;
+                const newRole = document.getElementById('editUserRole').value;
                 if (!editingUserId) return;
+
+                // Check if the user being edited is systems_administrator and current user is not systems_administrator
+                const targetDoc = await db.collection('users').doc(editingUserId).get();
+                const targetRole = targetDoc.data()?.role;
+                if (targetRole === 'systems_administrator' && !isSystemsAdmin(role)) {
+                    showToast('You cannot edit a Systems Administrator.', 'error');
+                    return;
+                }
+                if (newRole === 'systems_administrator' && !isSystemsAdmin(role)) {
+                    showToast('You cannot assign Systems Administrator role.', 'error');
+                    return;
+                }
 
                 try {
                     await db.collection('users').doc(editingUserId).update({
                         displayName: displayName || 'User',
-                        role: role,
+                        role: newRole,
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     showToast('User updated successfully!', 'success');
@@ -248,33 +292,44 @@
                     }
 
                     let html = '';
+                    const currentRole = getCurrentRole();
+
                     snap.forEach(doc => {
                         const d = doc.data();
-                        const role = d.role || 'user';
-                        const isSuper = role === 'superadmin';
-                        const isAdmin = role === 'admin';
+                        const userRole = d.role || 'user';
+                        const isSystemsAdmin = userRole === 'systems_administrator';
+                        const isManager = userRole === 'manager';
+                        const isSupervisor = userRole === 'supervisor';
+                        const isAdmin = userRole === 'admin';
                         const isSelf = doc.id === currentUser?.uid;
 
-                        // Permissions:
-                        // - Superadmin can delete/edit any user except themselves (maybe allow?)
-                        // - Admin can delete/edit non-admin, non-superadmin users
+                        // Determine action buttons based on permissions
                         let canEdit = false;
                         let canDelete = false;
                         let canReset = false;
 
-                        if (currentUserRole === 'superadmin') {
+                        // Systems Admin can do anything
+                        if (isSystemsAdmin(currentRole)) {
                             canEdit = true;
                             canDelete = true;
                             canReset = true;
-                        } else if (currentUserRole === 'admin') {
-                            if (!isSuper && !isAdmin) {
+                        } else if (isManager(currentRole) || isAdmin(currentRole)) {
+                            // Manager/Admin can edit/delete/reset non-systems_administrator users
+                            if (!isSystemsAdmin) {
                                 canEdit = true;
                                 canDelete = true;
                                 canReset = true;
                             }
+                        } else if (isSupervisor(currentRole)) {
+                            // Supervisor can only reset passwords of regular users (user role)
+                            if (userRole === 'user') {
+                                canReset = true;
+                            }
                         }
 
-                        const roleDisplay = isSuper ? '<span class="super-badge">Super Admin</span>' :
+                        const roleDisplay = isSystemsAdmin ? '<span class="super-badge">Systems Admin</span>' :
+                                            isManager ? '<span class="admin-badge">Manager</span>' :
+                                            isSupervisor ? '<span class="badge badge-info">Supervisor</span>' :
                                             isAdmin ? '<span class="admin-badge">Admin</span>' :
                                             '<span class="chip">User</span>';
 
@@ -304,6 +359,10 @@
                             editingUserId = userId;
                             document.getElementById('editUserEmail').value = d.email || '';
                             document.getElementById('editDisplayName').value = d.displayName || '';
+                            // Populate role options based on current user's permissions
+                            const includeSystemsAdmin = isSystemsAdmin(getCurrentRole());
+                            populateRoleSelect('editUserRole', includeSystemsAdmin);
+                            // Set selected role
                             document.getElementById('editUserRole').value = d.role || 'user';
                             editModal.style.display = 'flex';
                         } catch (e) {
