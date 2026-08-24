@@ -38,7 +38,7 @@
             <div class="nav-label">Admin</div>
             <a href="users.html" class="active"><i class="fas fa-users"></i> Users</a>
             <a href="admin.html"><i class="fas fa-user-shield"></i> Admin</a>
-            <a href="super-admin.html"><i class="fas fa-crown"></i> Super Admin</a>
+            <a href="super-admin.html"><i class="fas fa-crown"></i> Systems Admin</a>
             <a href="system-configurations.html"><i class="fas fa-cog"></i> System Config</a>
             <div class="nav-label">Reporting</div>
             <a href="reports.html"><i class="fas fa-chart-bar"></i> Reports</a>
@@ -89,7 +89,7 @@
         </div>
     </div>
 
-    <!-- LOGIN OVERLAY (hidden) -->
+    <!-- LOGIN OVERLAY -->
     <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
         <div class="login-box">
             <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
@@ -117,8 +117,7 @@
                         <option value="user">User</option>
                         <option value="supervisor">Supervisor</option>
                         <option value="manager">Manager</option>
-                        <!-- systems_administrator can only be assigned by systems_administrator -->
-                        <!-- but we'll add it dynamically based on current user role -->
+                        <!-- systems_administrator option added dynamically -->
                     </select>
                 </div>
                 <div class="form-group" style="margin-top:16px;border-top:1px solid #eef1f5;padding-top:16px;">
@@ -161,16 +160,24 @@
             });
             attachLoginHandlers();
 
-            // ----- Permission helpers (using common.js helpers) -----
-            function getCurrentRole() { return currentUserRole(); }
-            const role = getCurrentRole();
+            // ----- Helper to get current role safely -----
+            function getCurrentRole() {
+                // Use window.currentUserRole if available, otherwise fallback to 'user'
+                if (typeof window.currentUserRole === 'function') {
+                    return window.currentUserRole();
+                }
+                // Try to get from common.js variable (legacy)
+                if (typeof currentUserRole !== 'undefined') {
+                    return currentUserRole;
+                }
+                return 'user';
+            }
 
             // ----- Add User Modal -----
             const addModal = document.getElementById('addModal');
             const addClose = document.getElementById('addModalClose');
             const newUserBtn = document.getElementById('newUserBtn');
 
-            // Dynamically populate role options
             function populateRoleSelect(selectId, includeSystemsAdmin = false) {
                 const select = document.getElementById(selectId);
                 if (!select) return;
@@ -192,6 +199,7 @@
             }
 
             newUserBtn.addEventListener('click', () => {
+                const role = getCurrentRole();
                 if (!canCreateUsers(role)) {
                     showToast('You do not have permission to create users.', 'error');
                     return;
@@ -200,7 +208,6 @@
                 document.getElementById('newUserEmail').value = '';
                 document.getElementById('newUserPass').value = '';
                 document.getElementById('adminPasswordForCreation').value = '';
-                // Show systems_administrator option only if current user is systems_administrator
                 const includeSystemsAdmin = isSystemsAdmin(role);
                 populateRoleSelect('newUserRole', includeSystemsAdmin);
                 document.getElementById('newUserRole').value = 'user';
@@ -209,12 +216,12 @@
             addClose.addEventListener('click', () => { addModal.style.display = 'none'; });
             addModal.addEventListener('click', (e) => { if (e.target === addModal) addModal.style.display = 'none'; });
 
-            // Save new user
             document.getElementById('saveUserBtn').addEventListener('click', async () => {
                 const email = document.getElementById('newUserEmail').value.trim();
                 const pass = document.getElementById('newUserPass').value;
                 const newRole = document.getElementById('newUserRole').value;
                 const adminPass = document.getElementById('adminPasswordForCreation').value;
+                const role = getCurrentRole();
 
                 if (!email || !pass) { showToast('Please fill in email and password', 'error'); return; }
                 if (!adminPass) { showToast('Please enter your password', 'error'); return; }
@@ -249,13 +256,12 @@
             editClose.addEventListener('click', () => { editModal.style.display = 'none'; });
             editModal.addEventListener('click', (e) => { if (e.target === editModal) editModal.style.display = 'none'; });
 
-            // Save edit
             document.getElementById('saveEditBtn').addEventListener('click', async () => {
                 const displayName = document.getElementById('editDisplayName').value.trim();
                 const newRole = document.getElementById('editUserRole').value;
+                const role = getCurrentRole();
                 if (!editingUserId) return;
 
-                // Check if the user being edited is systems_administrator and current user is not systems_administrator
                 const targetDoc = await db.collection('users').doc(editingUserId).get();
                 const targetRole = targetDoc.data()?.role;
                 if (targetRole === 'systems_administrator' && !isSystemsAdmin(role)) {
@@ -291,46 +297,40 @@
                         return;
                     }
 
-                    let html = '';
                     const currentRole = getCurrentRole();
-
+                    let html = '';
                     snap.forEach(doc => {
                         const d = doc.data();
                         const userRole = d.role || 'user';
-                        const isSystemsAdmin = userRole === 'systems_administrator';
-                        const isManager = userRole === 'manager';
-                        const isSupervisor = userRole === 'supervisor';
-                        const isAdmin = userRole === 'admin';
-                        const isSelf = doc.id === currentUser?.uid;
+                        const isSystemsAdminUser = userRole === 'systems_administrator';
+                        const isManagerUser = userRole === 'manager';
+                        const isSupervisorUser = userRole === 'supervisor';
+                        const isAdminUser = userRole === 'admin';
 
-                        // Determine action buttons based on permissions
                         let canEdit = false;
                         let canDelete = false;
                         let canReset = false;
 
-                        // Systems Admin can do anything
                         if (isSystemsAdmin(currentRole)) {
                             canEdit = true;
                             canDelete = true;
                             canReset = true;
                         } else if (isManager(currentRole) || isAdmin(currentRole)) {
-                            // Manager/Admin can edit/delete/reset non-systems_administrator users
-                            if (!isSystemsAdmin) {
+                            if (!isSystemsAdminUser) {
                                 canEdit = true;
                                 canDelete = true;
                                 canReset = true;
                             }
                         } else if (isSupervisor(currentRole)) {
-                            // Supervisor can only reset passwords of regular users (user role)
                             if (userRole === 'user') {
                                 canReset = true;
                             }
                         }
 
-                        const roleDisplay = isSystemsAdmin ? '<span class="super-badge">Systems Admin</span>' :
-                                            isManager ? '<span class="admin-badge">Manager</span>' :
-                                            isSupervisor ? '<span class="badge badge-info">Supervisor</span>' :
-                                            isAdmin ? '<span class="admin-badge">Admin</span>' :
+                        const roleDisplay = isSystemsAdminUser ? '<span class="super-badge">Systems Admin</span>' :
+                                            isManagerUser ? '<span class="admin-badge">Manager</span>' :
+                                            isSupervisorUser ? '<span class="badge badge-info">Supervisor</span>' :
+                                            isAdminUser ? '<span class="admin-badge">Admin</span>' :
                                             '<span class="chip">User</span>';
 
                         html += `
@@ -359,10 +359,8 @@
                             editingUserId = userId;
                             document.getElementById('editUserEmail').value = d.email || '';
                             document.getElementById('editDisplayName').value = d.displayName || '';
-                            // Populate role options based on current user's permissions
                             const includeSystemsAdmin = isSystemsAdmin(getCurrentRole());
                             populateRoleSelect('editUserRole', includeSystemsAdmin);
-                            // Set selected role
                             document.getElementById('editUserRole').value = d.role || 'user';
                             editModal.style.display = 'flex';
                         } catch (e) {
