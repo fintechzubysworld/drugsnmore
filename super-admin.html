@@ -14,9 +14,8 @@
 <body>
     <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
 
-    <!-- SIDEBAR (same as before) -->
+    <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
-        <!-- Sidebar content – include all links, with super-admin active -->
         <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
         <nav class="sidebar-nav">
             <div class="nav-label">Main</div>
@@ -56,54 +55,89 @@
 
     <!-- MAIN -->
     <div class="main">
-        <header class="header"><!-- same header --></header>
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+                <h2 id="pageTitle">Systems Administrator</h2>
+            </div>
+            <div class="header-right">
+                <button class="notif-btn" id="notifIcon"><i class="fas fa-bell"></i><span class="dot" id="notifDot"></span></button>
+                <div class="user-badge"><i class="fas fa-user-circle"></i><span id="userDisplay">User</span></div>
+            </div>
+        </header>
+
         <div class="content">
             <div class="page-header">
                 <h2>Systems Administrator</h2>
                 <span class="sub">Create &amp; delete administrators · extended configurations</span>
             </div>
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-title"><i class="fas fa-user-plus"></i> Create Admin</div>
-                    <div class="form-group"><label>Email</label><input id="superCreateAdminEmail" placeholder="admin@example.com" /></div>
-                    <div class="form-group"><label>Password</label><input id="superCreateAdminPass" type="password" placeholder="••••••••" /></div>
-                    <div class="form-group"><label>Role</label>
-                        <select id="superCreateRole">
-                            <option value="manager">Manager</option>
-                            <option value="admin">Admin</option>
-                            <option value="supervisor">Supervisor</option>
-                            <option value="user">User</option>
-                        </select>
-                    </div>
-                    <div class="form-group" style="margin-top:12px;border-top:1px solid #eef1f5;padding-top:16px;">
-                        <label><i class="fas fa-shield-alt"></i> Your Systems Admin Password</label>
-                        <input id="superAdminPassword" type="password" placeholder="Enter your password to create admin" />
-                        <span style="font-size:0.75rem;color:var(--text-light);">We need your password to keep you logged in.</span>
-                    </div>
-                    <button class="btn btn-primary" id="superCreateAdminBtn"><i class="fas fa-user-shield"></i> Create Admin</button>
-                </div>
-                <div class="card">
-                    <div class="card-title"><i class="fas fa-user-minus"></i> Delete Admin</div>
-                    <div class="form-group"><label>Admin Email</label><input id="superDeleteAdminEmail" placeholder="admin@example.com" /></div>
-                    <button class="btn btn-danger" id="superDeleteAdminBtn"><i class="fas fa-trash"></i> Delete Admin</button>
+
+            <!-- Access denied placeholder (hidden by default) -->
+            <div id="accessDenied" style="display:none;">
+                <div class="card" style="text-align:center;padding:40px;">
+                    <i class="fas fa-ban" style="font-size:3rem;color:#e74c3c;display:block;margin-bottom:16px;"></i>
+                    <h3>Systems Administrator Only</h3>
+                    <p style="color:var(--text-light);">You do not have permission to access this page.</p>
+                    <button class="btn btn-outline" onclick="location.href='index.html'" style="margin-top:16px;">
+                        <i class="fas fa-arrow-left"></i> Go to Dashboard
+                    </button>
                 </div>
             </div>
-            <div class="card">
-                <div class="card-title"><i class="fas fa-cogs"></i> Extended Configurations</div>
-                <div class="form-row">
-                    <div class="form-group"><label>System Name</label><input id="configSystemName" value="Drugs n' More" /></div>
-                    <div class="form-group"><label>Currency</label><input id="configCurrency" value="USD" /></div>
+
+            <!-- Main content (visible only for Systems Admin) -->
+            <div id="adminContent">
+                <div class="grid-2">
+                    <!-- Create Admin -->
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-user-plus"></i> Create Administrator</div>
+                        <div class="form-group"><label>Email</label><input id="superCreateAdminEmail" placeholder="admin@example.com" /></div>
+                        <div class="form-group"><label>Password</label><input id="superCreateAdminPass" type="password" placeholder="••••••••" /></div>
+                        <div class="form-group"><label>Role</label>
+                            <select id="superCreateRole">
+                                <option value="manager">Manager</option>
+                                <option value="admin">Admin</option>
+                                <option value="supervisor">Supervisor</option>
+                                <option value="user">User</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-top:12px;border-top:1px solid #eef1f5;padding-top:16px;">
+                            <label><i class="fas fa-shield-alt"></i> Your Systems Admin Password</label>
+                            <input id="superAdminPassword" type="password" placeholder="Enter your password to create user" />
+                            <span style="font-size:0.75rem;color:var(--text-light);">We need your password to keep you logged in.</span>
+                        </div>
+                        <button class="btn btn-primary" id="superCreateAdminBtn"><i class="fas fa-user-shield"></i> Create User</button>
+                    </div>
+
+                    <!-- Delete Admin -->
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-user-minus"></i> Delete Administrator</div>
+                        <div class="form-group"><label>Email of user to delete</label><input id="superDeleteAdminEmail" placeholder="user@example.com" /></div>
+                        <button class="btn btn-danger" id="superDeleteAdminBtn"><i class="fas fa-trash"></i> Delete User</button>
+                        <p style="margin-top:10px;font-size:0.75rem;color:var(--text-light);">
+                            You can delete users with roles: Manager, Admin, Supervisor, or User.<br>
+                            You cannot delete Systems Administrators or yourself.
+                        </p>
+                    </div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group"><label>Default Tax (%)</label><input id="configTax" type="number" value="7.5" /></div>
-                    <div class="form-group"><label>Default Discount (%)</label><input id="configDiscount" type="number" value="0" /></div>
+
+                <!-- Extended Configurations -->
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-cogs"></i> Extended Configurations</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>System Name</label><input id="configSystemName" value="Drugs n' More" /></div>
+                        <div class="form-group"><label>Currency</label><input id="configCurrency" value="USD" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Default Tax (%)</label><input id="configTax" type="number" value="7.5" /></div>
+                        <div class="form-group"><label>Default Discount (%)</label><input id="configDiscount" type="number" value="0" /></div>
+                    </div>
+                    <button class="btn btn-primary" id="saveConfigBtn"><i class="fas fa-save"></i> Save Config</button>
                 </div>
-                <button class="btn btn-primary" id="saveConfigBtn"><i class="fas fa-save"></i> Save Config</button>
             </div>
         </div>
     </div>
 
-    <!-- LOGIN OVERLAY (hidden) -->
+    <!-- LOGIN OVERLAY (hidden by default) -->
     <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
         <div class="login-box">
             <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
@@ -119,33 +153,52 @@
     <script src="common.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // --- Helper to get current role safely ---
+            function getCurrentRole() {
+                if (typeof window.currentUserRole === 'function') {
+                    return window.currentUserRole();
+                }
+                if (typeof currentUserRole !== 'undefined') {
+                    return currentUserRole;
+                }
+                return 'user';
+            }
+
+            // --- Initialize auth and check permissions ---
             initAuth(() => {
-                // Check if user is systems_administrator
-                const role = currentUserRole();
+                const role = getCurrentRole();
                 if (!isSystemsAdmin(role)) {
-                    document.querySelector('.content').innerHTML = `
-                        <div class="page-header"><h2>Access Denied</h2></div>
-                        <div class="card" style="text-align:center;padding:40px;">
-                            <i class="fas fa-ban" style="font-size:3rem;color:#e74c3c;display:block;margin-bottom:16px;"></i>
-                            <h3>Systems Administrator Only</h3>
-                            <p style="color:var(--text-light);">You do not have permission to access this page.</p>
-                        </div>
-                    `;
+                    document.getElementById('adminContent').style.display = 'none';
+                    document.getElementById('accessDenied').style.display = 'block';
+                } else {
+                    document.getElementById('accessDenied').style.display = 'none';
+                    document.getElementById('adminContent').style.display = 'block';
+                    // Load current config values
+                    loadConfigValues();
                 }
             });
             attachLoginHandlers();
 
-            // ----- Create Admin (Manager/Admin etc.) -----
+            // ----- Create Admin (Manager/Admin/Supervisor/User) -----
             document.getElementById('superCreateAdminBtn').addEventListener('click', async () => {
-                const role = currentUserRole();
-                if (!isSystemsAdmin(role)) { showToast('Systems Admin only', 'error'); return; }
+                const role = getCurrentRole();
+                if (!isSystemsAdmin(role)) {
+                    showToast('Systems Admin only', 'error');
+                    return;
+                }
                 const email = document.getElementById('superCreateAdminEmail').value.trim();
                 const pass = document.getElementById('superCreateAdminPass').value;
                 const newRole = document.getElementById('superCreateRole').value;
                 const adminPass = document.getElementById('superAdminPassword').value;
 
-                if (!email || !pass) { showToast('Please fill in email and password', 'error'); return; }
-                if (!adminPass) { showToast('Please enter your password', 'error'); return; }
+                if (!email || !pass) {
+                    showToast('Please fill in email and password', 'error');
+                    return;
+                }
+                if (!adminPass) {
+                    showToast('Please enter your password', 'error');
+                    return;
+                }
 
                 const adminEmail = currentUser.email;
 
@@ -157,52 +210,123 @@
                         displayName: email.split('@')[0],
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
+                    // Sign out new user and sign back in as systems admin
                     await auth.signOut();
                     await auth.signInWithEmailAndPassword(adminEmail, adminPass);
-                    showToast('User created!', 'success');
+                    showToast('User created successfully!', 'success');
                     document.getElementById('superCreateAdminEmail').value = '';
                     document.getElementById('superCreateAdminPass').value = '';
                     document.getElementById('superAdminPassword').value = '';
                 } catch (e) {
-                    if (e.code === 'auth/wrong-password') showToast('Incorrect password.', 'error');
-                    else showToast(e.message, 'error');
+                    if (e.code === 'auth/wrong-password') {
+                        showToast('Incorrect password.', 'error');
+                    } else {
+                        showToast(e.message, 'error');
+                    }
                 }
             });
 
-            // ----- Delete Admin -----
+            // ----- Delete Admin (any user except systems_administrator and self) -----
             document.getElementById('superDeleteAdminBtn').addEventListener('click', async () => {
-                const role = currentUserRole();
-                if (!isSystemsAdmin(role)) { showToast('Systems Admin only', 'error'); return; }
+                const role = getCurrentRole();
+                if (!isSystemsAdmin(role)) {
+                    showToast('Systems Admin only', 'error');
+                    return;
+                }
                 const email = document.getElementById('superDeleteAdminEmail').value.trim();
-                if (!email) { showToast('Please enter admin email', 'error'); return; }
+                if (!email) {
+                    showToast('Please enter an email address', 'error');
+                    return;
+                }
+
+                // Prevent deleting yourself
+                if (email === currentUser.email) {
+                    showToast('You cannot delete yourself.', 'error');
+                    return;
+                }
+
                 try {
+                    // Find user by email – allow deleting any role except systems_administrator
                     const snap = await db.collection('users')
                         .where('email', '==', email)
-                        .where('role', 'in', ['manager', 'admin', 'supervisor'])
                         .get();
-                    if (snap.empty) { showToast('Admin not found', 'error'); return; }
-                    snap.forEach(doc => doc.ref.delete());
-                    showToast('Admin removed');
+                    if (snap.empty) {
+                        showToast('User not found', 'error');
+                        return;
+                    }
+
+                    let userDoc = null;
+                    let userId = null;
+                    snap.forEach(doc => {
+                        userDoc = doc;
+                        userId = doc.id;
+                    });
+
+                    const userData = userDoc.data();
+                    const userRole = userData.role || 'user';
+
+                    // Prevent deletion of systems_administrator
+                    if (userRole === 'systems_administrator') {
+                        showToast('You cannot delete a Systems Administrator.', 'error');
+                        return;
+                    }
+
+                    // Confirm deletion
+                    if (!confirm(`Are you sure you want to delete user "${email}" (role: ${userRole})? This action cannot be undone.`)) {
+                        return;
+                    }
+
+                    // Delete the Firestore document
+                    await db.collection('users').doc(userId).delete();
+                    showToast(`User ${email} deleted successfully.`, 'success');
                     document.getElementById('superDeleteAdminEmail').value = '';
-                } catch(e) { showToast(e.message, 'error'); }
+                } catch (e) {
+                    showToast('Error deleting user: ' + e.message, 'error');
+                }
             });
 
-            // ----- Save Config -----
+            // ----- Load Extended Config -----
+            async function loadConfigValues() {
+                try {
+                    const doc = await db.collection('config').doc('extended').get();
+                    if (doc.exists) {
+                        const d = doc.data();
+                        document.getElementById('configSystemName').value = d.systemName || 'Drugs n\' More';
+                        document.getElementById('configCurrency').value = d.currency || 'USD';
+                        document.getElementById('configTax').value = d.tax || 7.5;
+                        document.getElementById('configDiscount').value = d.discount || 0;
+                    }
+                } catch (e) {
+                    console.warn('Error loading config:', e);
+                }
+            }
+
+            // ----- Save Extended Config -----
             document.getElementById('saveConfigBtn').addEventListener('click', async () => {
-                const role = currentUserRole();
-                if (!isSystemsAdmin(role)) { showToast('Systems Admin only', 'error'); return; }
+                const role = getCurrentRole();
+                if (!isSystemsAdmin(role)) {
+                    showToast('Systems Admin only', 'error');
+                    return;
+                }
                 const data = {
-                    systemName: document.getElementById('configSystemName').value,
-                    currency: document.getElementById('configCurrency').value,
+                    systemName: document.getElementById('configSystemName').value.trim(),
+                    currency: document.getElementById('configCurrency').value.trim(),
                     tax: parseFloat(document.getElementById('configTax').value) || 0,
                     discount: parseFloat(document.getElementById('configDiscount').value) || 0,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 try {
                     await db.collection('config').doc('extended').set(data, { merge: true });
-                    showToast('Config saved!');
-                } catch(e) { showToast(e.message, 'error'); }
+                    showToast('Extended configurations saved!', 'success');
+                    // Also update main currency if changed
+                    await loadCurrency();
+                } catch (e) {
+                    showToast('Error saving: ' + e.message, 'error');
+                }
             });
+
+            // Expose loadConfigValues globally for refresh if needed
+            window.loadConfigValues = loadConfigValues;
         });
     </script>
 </body>
