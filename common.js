@@ -9,32 +9,37 @@ const firebaseConfig = {
     measurementId: "G-HV3GYSY6CK"
 };
 
-// Check if Firebase is already initialized
+// Check if Firebase is already initialized (avoids duplicate init errors)
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// ----- GLOBAL STATE -----
 let currentUser = null;
 let currentUserRole = 'user';
-let currentCurrency = '$'; // default currency symbol
+let currentCurrency = '$'; // default symbol
 
-// DOM helpers
+// ----- DOM HELPERS -----
 const $ = id => document.getElementById(id);
 const toast = $('toast');
 const toastMsg = $('toastMsg');
 
+// ----- TOAST NOTIFICATIONS -----
 function showToast(msg, type = 'success') {
     if (!toast) return;
     toast.className = 'toast show ' + type;
     toastMsg.textContent = msg;
     const icon = toast.querySelector('i');
-    icon.className = type === 'success' ? 'fas fa-check-circle' : type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-info-circle';
+    icon.className = type === 'success' ? 'fas fa-check-circle' :
+                     type === 'error' ? 'fas fa-exclamation-circle' :
+                     'fas fa-info-circle';
     clearTimeout(toast._hide);
     toast._hide = setTimeout(() => toast.classList.remove('show'), 4000);
 }
 
+// ----- LOGIN / APP TOGGLE -----
 function showLogin() {
     const loginPage = $('loginPage');
     if (!loginPage) return;
@@ -80,48 +85,42 @@ function getCurrency() {
     return currentCurrency;
 }
 
-// ===== ROBUST SEED ADMIN =====
+// ----- SEED ADMIN (creates super admin if no users exist) -----
 async function seedAdmin() {
     const adminEmail = 'superadmin@drugsnmore.com';
     const adminPass = 'superadmin123';
     
     try {
-        // First, try to sign in – if it works, account exists
-        try {
-            await auth.signInWithEmailAndPassword(adminEmail, adminPass);
-            await auth.signOut();
-            console.log('✅ Super admin already exists');
+        // Check if any user exists in Firestore
+        const snap = await db.collection('users').limit(1).get();
+        if (!snap.empty) {
+            console.log('✅ Users exist – skipping seed');
             return;
-        } catch (signInError) {
-            // If user not found, create the account
-            if (signInError.code === 'auth/user-not-found') {
-                console.log('🔨 Creating super admin account...');
-                const cred = await auth.createUserWithEmailAndPassword(adminEmail, adminPass);
-                await cred.user.updateProfile({ displayName: 'Super Admin' });
-                await db.collection('users').doc(cred.user.uid).set({
-                    email: adminEmail,
-                    role: 'superadmin',
-                    displayName: 'Super Admin',
-                    branch: 'Headquarters',
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                // Set default currency
-                await db.collection('config').doc('system').set({
-                    currency: '$'
-                }, { merge: true });
-                console.log('✅ Super admin created successfully');
-                await auth.signOut();
-            } else {
-                // Some other error (network, etc.)
-                console.warn('Seed admin check error:', signInError.message);
-            }
         }
+        
+        // No users found – create the super admin
+        console.log('🔨 Creating super admin...');
+        const cred = await auth.createUserWithEmailAndPassword(adminEmail, adminPass);
+        await cred.user.updateProfile({ displayName: 'Super Admin' });
+        await db.collection('users').doc(cred.user.uid).set({
+            email: adminEmail,
+            role: 'superadmin',
+            displayName: 'Super Admin',
+            branch: 'Headquarters',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        // Set default currency in config
+        await db.collection('config').doc('system').set({
+            currency: '$'
+        }, { merge: true });
+        console.log('✅ Super admin created successfully');
+        await auth.signOut();
     } catch (e) {
-        console.warn('Seed admin fatal error:', e.message);
+        console.warn('Seed admin error:', e.message);
     }
 }
 
-// ----- AUTH INIT -----
+// ----- AUTH INITIALIZATION -----
 function initAuth(callback) {
     auth.onAuthStateChanged(async (user) => {
         if (user) {
@@ -133,10 +132,13 @@ function initAuth(callback) {
             // Load currency
             await loadCurrency();
             
+            // Fetch or create user role
             try {
                 const doc = await db.collection('users').doc(user.uid).get();
-                if (doc.exists) currentUserRole = doc.data().role || 'user';
-                else {
+                if (doc.exists) {
+                    currentUserRole = doc.data().role || 'user';
+                } else {
+                    // Create user document if missing
                     await db.collection('users').doc(user.uid).set({
                         email: user.email,
                         role: 'user',
@@ -145,25 +147,32 @@ function initAuth(callback) {
                     });
                     currentUserRole = 'user';
                 }
-            } catch (e) { 
+            } catch (e) {
                 console.warn('Role fetch error:', e);
-                currentUserRole = 'user'; 
+                currentUserRole = 'user';
             }
+            
+            // Show/hide super admin and admin links
             const isSuper = currentUserRole === 'superadmin';
-            document.querySelectorAll('.sidebar-nav a[href="super-admin.html"]').forEach(el => el.style.display = isSuper ? 'flex' : 'none');
-            document.querySelectorAll('.sidebar-nav a[href="system-configurations.html"]').forEach(el => el.style.display = isSuper ? 'flex' : 'none');
+            const isAdmin = currentUserRole === 'admin' || isSuper;
+            document.querySelectorAll('.sidebar-nav a[href="super-admin.html"]')
+                .forEach(el => el.style.display = isSuper ? 'flex' : 'none');
+            document.querySelectorAll('.sidebar-nav a[href="system-configurations.html"]')
+                .forEach(el => el.style.display = isSuper ? 'flex' : 'none');
+            
             loadNotificationCount();
             if (callback) callback(user);
         } else {
             currentUser = null;
             currentUserRole = 'user';
             showLogin();
-            // Seed admin only if no one is logged in
+            // Only seed admin when no user is logged in
             seedAdmin();
         }
     });
 }
 
+// ----- NOTIFICATION COUNT -----
 async function loadNotificationCount() {
     if (!currentUser) return;
     try {
@@ -178,6 +187,7 @@ async function loadNotificationCount() {
     }
 }
 
+// ----- LOGIN HANDLERS -----
 function attachLoginHandlers() {
     const loginBtn = $('loginBtn');
     const loginEmail = $('loginEmail');
@@ -192,13 +202,26 @@ function attachLoginHandlers() {
             const email = loginEmail.value.trim();
             const pass = loginPassword.value;
             loginError.style.display = 'none';
-            if (!email || !pass) { loginError.textContent = 'Please fill in all fields.'; loginError.style.display = 'block'; return; }
-            try { await auth.signInWithEmailAndPassword(email, pass); }
-            catch (e) { loginError.textContent = e.message; loginError.style.display = 'block'; }
+            if (!email || !pass) {
+                loginError.textContent = 'Please fill in all fields.';
+                loginError.style.display = 'block';
+                return;
+            }
+            try {
+                await auth.signInWithEmailAndPassword(email, pass);
+            } catch (e) {
+                loginError.textContent = e.message;
+                loginError.style.display = 'block';
+            }
         });
-        loginPassword.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
-        loginEmail.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
+        loginPassword.addEventListener('keydown', e => {
+            if (e.key === 'Enter') loginBtn.click();
+        });
+        loginEmail.addEventListener('keydown', e => {
+            if (e.key === 'Enter') loginBtn.click();
+        });
     }
+
     if (goToRegister) {
         goToRegister.addEventListener('click', e => {
             e.preventDefault();
@@ -206,31 +229,48 @@ function attachLoginHandlers() {
             if (!email) return;
             const pass = prompt('Enter password:');
             if (!pass) return;
-            auth.createUserWithEmailAndPassword(email, pass).then(() => showToast('User registered!')).catch(e => showToast(e.message, 'error'));
+            auth.createUserWithEmailAndPassword(email, pass)
+                .then(() => showToast('User registered!'))
+                .catch(e => showToast(e.message, 'error'));
         });
     }
+
     if (goToResetPass) {
         goToResetPass.addEventListener('click', e => {
             e.preventDefault();
             const email = prompt('Enter your email to reset password:');
             if (!email) return;
-            auth.sendPasswordResetEmail(email).then(() => showToast('Reset link sent!')).catch(e => showToast(e.message, 'error'));
+            auth.sendPasswordResetEmail(email)
+                .then(() => showToast('Reset link sent!'))
+                .catch(e => showToast(e.message, 'error'));
         });
     }
+
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', e => { e.preventDefault(); auth.signOut(); });
+        logoutBtn.addEventListener('click', e => {
+            e.preventDefault();
+            auth.signOut();
+        });
     }
+
+    // Menu toggle for mobile
     const menuToggle = document.getElementById('menuToggle');
     if (menuToggle) {
-        menuToggle.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
+        menuToggle.addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('open');
+        });
     }
+
+    // Notification icon
     const notifIcon = document.getElementById('notifIcon');
     if (notifIcon) {
-        notifIcon.addEventListener('click', () => location.href = 'notifications.html');
+        notifIcon.addEventListener('click', () => {
+            location.href = 'notifications.html';
+        });
     }
 }
 
-// Export global functions
+// ----- EXPOSE GLOBALLY -----
 window.showToast = showToast;
 window.db = db;
 window.auth = auth;
