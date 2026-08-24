@@ -191,12 +191,14 @@ async function seedAdmin() {
     const adminPass = 'systemsadmin123';
     
     try {
+        // Check if any user exists in Firestore
         const snap = await db.collection('users').limit(1).get();
         if (!snap.empty) {
             console.log('✅ Users exist – skipping seed');
             return;
         }
         
+        // No users found – create the systems administrator
         console.log('🔨 Creating systems administrator...');
         const cred = await auth.createUserWithEmailAndPassword(adminEmail, adminPass);
         await cred.user.updateProfile({ displayName: 'Systems Administrator' });
@@ -207,6 +209,7 @@ async function seedAdmin() {
             branch: 'Headquarters',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+        // Set default currency in config
         await db.collection('config').doc('system').set({
             currency: '$'
         }, { merge: true });
@@ -226,13 +229,16 @@ function initAuth(callback) {
             if (displayEl) displayEl.textContent = user.displayName || user.email || 'User';
             showApp();
             
+            // Load currency
             await loadCurrency();
             
+            // Fetch or create user role
             try {
                 const doc = await db.collection('users').doc(user.uid).get();
                 if (doc.exists) {
                     currentUserRole = doc.data().role || ROLES.USER;
                 } else {
+                    // Create user document if missing
                     await db.collection('users').doc(user.uid).set({
                         email: user.email,
                         role: ROLES.USER,
@@ -264,6 +270,7 @@ function initAuth(callback) {
             currentUser = null;
             currentUserRole = ROLES.USER;
             showLogin();
+            // Only seed admin when no user is logged in
             seedAdmin();
         }
     });
@@ -350,6 +357,7 @@ function attachLoginHandlers() {
         });
     }
 
+    // Menu toggle for mobile
     const menuToggle = document.getElementById('menuToggle');
     if (menuToggle) {
         menuToggle.addEventListener('click', () => {
@@ -357,6 +365,7 @@ function attachLoginHandlers() {
         });
     }
 
+    // Notification icon
     const notifIcon = document.getElementById('notifIcon');
     if (notifIcon) {
         notifIcon.addEventListener('click', () => {
