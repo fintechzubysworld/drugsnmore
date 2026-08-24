@@ -1,16 +1,6 @@
 // ===== common.js – shared Firebase init, auth, navigation, toast, currency, and helpers =====
-const firebaseConfig = {
-    apiKey: "AIzaSyCA9vHsVV841oZue9McbU14yyZtyDptT3Q",
-    authDomain: "drugs-n--more.firebaseapp.com",
-    projectId: "drugs-n--more",
-    storageBucket: "drugs-n--more.firebasestorage.app",
-    messagingSenderId: "1027965446929",
-    appId: "1:1027965446929:web:eec971b5e458baff813ab0",
-    measurementId: "G-HV3GYSY6CK"
-};
-
 // ============================================================
-//  ROLE CONSTANTS & HIERARCHY
+//  ROLE CONSTANTS & HIERARCHY – defined FIRST
 // ============================================================
 const ROLES = {
     SYSTEMS_ADMIN: 'systems_administrator',
@@ -20,7 +10,6 @@ const ROLES = {
     USER: 'user'
 };
 
-// Role order (higher number = higher privilege)
 const ROLE_ORDER = {
     [ROLES.SYSTEMS_ADMIN]: 5,
     [ROLES.ADMIN]: 4,
@@ -30,7 +19,7 @@ const ROLE_ORDER = {
 };
 
 // ============================================================
-//  PERMISSION HELPERS (based on hierarchy)
+//  PERMISSION HELPERS – defined SECOND (function declarations)
 // ============================================================
 function getRoleLevel(role) {
     return ROLE_ORDER[role] || 0;
@@ -60,30 +49,24 @@ function isSupervisor(role) {
     return role === ROLES.SUPERVISOR;
 }
 
-// ----- Permission checks -----
 function canCreateUsers(role) {
-    // Only Systems Admin and Admin can create users
     return isSystemsAdmin(role) || role === ROLES.ADMIN;
 }
 
 function canManageUser(viewerRole, targetRole) {
-    // Viewer must have higher role than target (cannot manage same or higher)
     return isRoleHigher(viewerRole, targetRole);
 }
 
 function canDeleteUser(viewerRole, targetRole) {
-    // Systems Admin, Admin, Manager can delete lower roles
     return (isSystemsAdmin(viewerRole) || viewerRole === ROLES.ADMIN || viewerRole === ROLES.MANAGER) 
            && isRoleHigher(viewerRole, targetRole);
 }
 
 function canEditUser(viewerRole, targetRole) {
-    // Same as delete
     return canDeleteUser(viewerRole, targetRole);
 }
 
 function canResetPassword(viewerRole, targetRole) {
-    // Systems Admin, Admin, Manager, Supervisor can reset lower roles
     return (isSystemsAdmin(viewerRole) || viewerRole === ROLES.ADMIN || viewerRole === ROLES.MANAGER || viewerRole === ROLES.SUPERVISOR)
            && isRoleHigher(viewerRole, targetRole);
 }
@@ -96,20 +79,25 @@ function canAccessSuperAdmin(role) {
     return isSystemsAdmin(role);
 }
 
-// ============================================================
-//  HIERARCHY FOR VIEWING USERS
-// ============================================================
 function getVisibleRoles(role) {
-    // Returns an array of roles that the given role can view.
-    // Includes the viewer's own role and all lower roles.
     const allRoles = Object.values(ROLES);
     const viewerLevel = getRoleLevel(role);
     return allRoles.filter(r => getRoleLevel(r) <= viewerLevel);
 }
 
 // ============================================================
-//  FIREBASE INITIALIZATION
+//  FIREBASE CONFIG
 // ============================================================
+const firebaseConfig = {
+    apiKey: "AIzaSyCA9vHsVV841oZue9McbU14yyZtyDptT3Q",
+    authDomain: "drugs-n--more.firebaseapp.com",
+    projectId: "drugs-n--more",
+    storageBucket: "drugs-n--more.firebasestorage.app",
+    messagingSenderId: "1027965446929",
+    appId: "1:1027965446929:web:eec971b5e458baff813ab0",
+    measurementId: "G-HV3GYSY6CK"
+};
+
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
@@ -191,14 +179,12 @@ async function seedAdmin() {
     const adminPass = 'systemsadmin123';
     
     try {
-        // Check if any user exists in Firestore
         const snap = await db.collection('users').limit(1).get();
         if (!snap.empty) {
             console.log('✅ Users exist – skipping seed');
             return;
         }
         
-        // No users found – create the systems administrator
         console.log('🔨 Creating systems administrator...');
         const cred = await auth.createUserWithEmailAndPassword(adminEmail, adminPass);
         await cred.user.updateProfile({ displayName: 'Systems Administrator' });
@@ -209,7 +195,6 @@ async function seedAdmin() {
             branch: 'Headquarters',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        // Set default currency in config
         await db.collection('config').doc('system').set({
             currency: '$'
         }, { merge: true });
@@ -229,16 +214,13 @@ function initAuth(callback) {
             if (displayEl) displayEl.textContent = user.displayName || user.email || 'User';
             showApp();
             
-            // Load currency
             await loadCurrency();
             
-            // Fetch or create user role
             try {
                 const doc = await db.collection('users').doc(user.uid).get();
                 if (doc.exists) {
                     currentUserRole = doc.data().role || ROLES.USER;
                 } else {
-                    // Create user document if missing
                     await db.collection('users').doc(user.uid).set({
                         email: user.email,
                         role: ROLES.USER,
@@ -252,7 +234,6 @@ function initAuth(callback) {
                 currentUserRole = ROLES.USER;
             }
             
-            // Show/hide sidebar links based on role
             const canAccessSysConfig = canAccessSystemConfig(currentUserRole);
             const canAccessSuperAdmin = canAccessSuperAdmin(currentUserRole);
             const canAccessAdminPages = isAdmin(currentUserRole) || isSystemsAdmin(currentUserRole);
@@ -270,7 +251,6 @@ function initAuth(callback) {
             currentUser = null;
             currentUserRole = ROLES.USER;
             showLogin();
-            // Only seed admin when no user is logged in
             seedAdmin();
         }
     });
@@ -357,7 +337,6 @@ function attachLoginHandlers() {
         });
     }
 
-    // Menu toggle for mobile
     const menuToggle = document.getElementById('menuToggle');
     if (menuToggle) {
         menuToggle.addEventListener('click', () => {
@@ -365,7 +344,6 @@ function attachLoginHandlers() {
         });
     }
 
-    // Notification icon
     const notifIcon = document.getElementById('notifIcon');
     if (notifIcon) {
         notifIcon.addEventListener('click', () => {
@@ -388,7 +366,7 @@ window.formatCurrency = formatCurrency;
 window.getCurrency = getCurrency;
 window.currentCurrency = () => currentCurrency;
 
-// Expose role helpers and hierarchy functions
+// Expose role helpers
 window.ROLES = ROLES;
 window.ROLE_ORDER = ROLE_ORDER;
 window.getRoleLevel = getRoleLevel;
