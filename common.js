@@ -1,92 +1,132 @@
 // ===== common.js – shared Firebase init, auth, navigation, toast, currency, and helpers =====
-// ============================================================
-//  ROLE CONSTANTS & HIERARCHY – defined FIRST
-// ============================================================
-const ROLES = {
-    SYSTEMS_ADMIN: 'systems_administrator',
-    ADMIN: 'admin',
-    MANAGER: 'manager',
-    SUPERVISOR: 'supervisor',
-    USER: 'user'
-};
-
-const ROLE_ORDER = {
-    [ROLES.SYSTEMS_ADMIN]: 5,
-    [ROLES.ADMIN]: 4,
-    [ROLES.MANAGER]: 3,
-    [ROLES.SUPERVISOR]: 2,
-    [ROLES.USER]: 1
-};
 
 // ============================================================
-//  PERMISSION HELPERS – defined SECOND (function declarations)
+//  PERMISSION SYSTEM – defined FIRST using an IIFE
 // ============================================================
-function getRoleLevel(role) {
-    return ROLE_ORDER[role] || 0;
-}
+const Permissions = (function() {
+    const ROLES = {
+        SYSTEMS_ADMIN: 'systems_administrator',
+        ADMIN: 'admin',
+        MANAGER: 'manager',
+        SUPERVISOR: 'supervisor',
+        USER: 'user'
+    };
+    
+    const ROLE_ORDER = {
+        [ROLES.SYSTEMS_ADMIN]: 5,
+        [ROLES.ADMIN]: 4,
+        [ROLES.MANAGER]: 3,
+        [ROLES.SUPERVISOR]: 2,
+        [ROLES.USER]: 1
+    };
+    
+    function getRoleLevel(role) {
+        return ROLE_ORDER[role] || 0;
+    }
+    
+    function isRoleHigherOrEqual(viewerRole, targetRole) {
+        return getRoleLevel(viewerRole) >= getRoleLevel(targetRole);
+    }
+    
+    function isRoleHigher(viewerRole, targetRole) {
+        return getRoleLevel(viewerRole) > getRoleLevel(targetRole);
+    }
+    
+    function isSystemsAdmin(role) {
+        return role === ROLES.SYSTEMS_ADMIN || role === 'superadmin';
+    }
+    
+    function isAdmin(role) {
+        return role === ROLES.ADMIN || role === ROLES.SYSTEMS_ADMIN || role === 'superadmin';
+    }
+    
+    function isManager(role) {
+        return role === ROLES.MANAGER;
+    }
+    
+    function isSupervisor(role) {
+        return role === ROLES.SUPERVISOR;
+    }
+    
+    function canCreateUsers(role) {
+        return isSystemsAdmin(role) || role === ROLES.ADMIN;
+    }
+    
+    function canManageUser(viewerRole, targetRole) {
+        return isRoleHigher(viewerRole, targetRole);
+    }
+    
+    function canDeleteUser(viewerRole, targetRole) {
+        return (isSystemsAdmin(viewerRole) || viewerRole === ROLES.ADMIN || viewerRole === ROLES.MANAGER) 
+               && isRoleHigher(viewerRole, targetRole);
+    }
+    
+    function canEditUser(viewerRole, targetRole) {
+        return canDeleteUser(viewerRole, targetRole);
+    }
+    
+    function canResetPassword(viewerRole, targetRole) {
+        return (isSystemsAdmin(viewerRole) || viewerRole === ROLES.ADMIN || viewerRole === ROLES.MANAGER || viewerRole === ROLES.SUPERVISOR)
+               && isRoleHigher(viewerRole, targetRole);
+    }
+    
+    function canAccessSystemConfig(role) {
+        return isSystemsAdmin(role);
+    }
+    
+    function canAccessSuperAdmin(role) {
+        return isSystemsAdmin(role);
+    }
+    
+    function getVisibleRoles(role) {
+        const allRoles = Object.values(ROLES);
+        const viewerLevel = getRoleLevel(role);
+        return allRoles.filter(r => getRoleLevel(r) <= viewerLevel);
+    }
+    
+    return {
+        ROLES: ROLES,
+        ROLE_ORDER: ROLE_ORDER,
+        getRoleLevel: getRoleLevel,
+        isRoleHigherOrEqual: isRoleHigherOrEqual,
+        isRoleHigher: isRoleHigher,
+        isSystemsAdmin: isSystemsAdmin,
+        isAdmin: isAdmin,
+        isManager: isManager,
+        isSupervisor: isSupervisor,
+        canCreateUsers: canCreateUsers,
+        canManageUser: canManageUser,
+        canDeleteUser: canDeleteUser,
+        canEditUser: canEditUser,
+        canResetPassword: canResetPassword,
+        canAccessSystemConfig: canAccessSystemConfig,
+        canAccessSuperAdmin: canAccessSuperAdmin,
+        getVisibleRoles: getVisibleRoles
+    };
+})();
 
-function isRoleHigherOrEqual(viewerRole, targetRole) {
-    return getRoleLevel(viewerRole) >= getRoleLevel(targetRole);
-}
-
-function isRoleHigher(viewerRole, targetRole) {
-    return getRoleLevel(viewerRole) > getRoleLevel(targetRole);
-}
-
-function isSystemsAdmin(role) {
-    return role === ROLES.SYSTEMS_ADMIN || role === 'superadmin';
-}
-
-function isAdmin(role) {
-    return role === ROLES.ADMIN || role === ROLES.SYSTEMS_ADMIN || role === 'superadmin';
-}
-
-function isManager(role) {
-    return role === ROLES.MANAGER;
-}
-
-function isSupervisor(role) {
-    return role === ROLES.SUPERVISOR;
-}
-
-function canCreateUsers(role) {
-    return isSystemsAdmin(role) || role === ROLES.ADMIN;
-}
-
-function canManageUser(viewerRole, targetRole) {
-    return isRoleHigher(viewerRole, targetRole);
-}
-
-function canDeleteUser(viewerRole, targetRole) {
-    return (isSystemsAdmin(viewerRole) || viewerRole === ROLES.ADMIN || viewerRole === ROLES.MANAGER) 
-           && isRoleHigher(viewerRole, targetRole);
-}
-
-function canEditUser(viewerRole, targetRole) {
-    return canDeleteUser(viewerRole, targetRole);
-}
-
-function canResetPassword(viewerRole, targetRole) {
-    return (isSystemsAdmin(viewerRole) || viewerRole === ROLES.ADMIN || viewerRole === ROLES.MANAGER || viewerRole === ROLES.SUPERVISOR)
-           && isRoleHigher(viewerRole, targetRole);
-}
-
-function canAccessSystemConfig(role) {
-    return isSystemsAdmin(role);
-}
-
-function canAccessSuperAdmin(role) {
-    return isSystemsAdmin(role);
-}
-
-function getVisibleRoles(role) {
-    const allRoles = Object.values(ROLES);
-    const viewerLevel = getRoleLevel(role);
-    return allRoles.filter(r => getRoleLevel(r) <= viewerLevel);
-}
+// Expose Permissions to global window object
+window.Permissions = Permissions;
+window.ROLES = Permissions.ROLES;
+window.ROLE_ORDER = Permissions.ROLE_ORDER;
+window.getRoleLevel = Permissions.getRoleLevel;
+window.isRoleHigherOrEqual = Permissions.isRoleHigherOrEqual;
+window.isRoleHigher = Permissions.isRoleHigher;
+window.isSystemsAdmin = Permissions.isSystemsAdmin;
+window.isAdmin = Permissions.isAdmin;
+window.isManager = Permissions.isManager;
+window.isSupervisor = Permissions.isSupervisor;
+window.canCreateUsers = Permissions.canCreateUsers;
+window.canManageUser = Permissions.canManageUser;
+window.canDeleteUser = Permissions.canDeleteUser;
+window.canEditUser = Permissions.canEditUser;
+window.canResetPassword = Permissions.canResetPassword;
+window.canAccessSystemConfig = Permissions.canAccessSystemConfig;
+window.canAccessSuperAdmin = Permissions.canAccessSuperAdmin;
+window.getVisibleRoles = Permissions.getVisibleRoles;
 
 // ============================================================
-//  FIREBASE CONFIG
+//  FIREBASE CONFIG & INIT
 // ============================================================
 const firebaseConfig = {
     apiKey: "AIzaSyCA9vHsVV841oZue9McbU14yyZtyDptT3Q",
@@ -106,7 +146,7 @@ const db = firebase.firestore();
 
 // ----- GLOBAL STATE -----
 let currentUser = null;
-let currentUserRole = ROLES.USER;
+let currentUserRole = 'user';
 let currentCurrency = '$';
 
 // ----- DOM HELPERS -----
@@ -160,7 +200,6 @@ async function loadCurrency() {
         }
     } catch (e) {
         console.warn('Error loading currency:', e);
-        // Keep default
     }
 }
 
@@ -190,7 +229,7 @@ async function seedAdmin() {
         await cred.user.updateProfile({ displayName: 'Systems Administrator' });
         await db.collection('users').doc(cred.user.uid).set({
             email: adminEmail,
-            role: ROLES.SYSTEMS_ADMIN,
+            role: Permissions.ROLES.SYSTEMS_ADMIN,
             displayName: 'Systems Administrator',
             branch: 'Headquarters',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -219,24 +258,25 @@ function initAuth(callback) {
             try {
                 const doc = await db.collection('users').doc(user.uid).get();
                 if (doc.exists) {
-                    currentUserRole = doc.data().role || ROLES.USER;
+                    currentUserRole = doc.data().role || Permissions.ROLES.USER;
                 } else {
                     await db.collection('users').doc(user.uid).set({
                         email: user.email,
-                        role: ROLES.USER,
+                        role: Permissions.ROLES.USER,
                         displayName: user.displayName || user.email,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    currentUserRole = ROLES.USER;
+                    currentUserRole = Permissions.ROLES.USER;
                 }
             } catch (e) {
                 console.warn('Role fetch error:', e);
-                currentUserRole = ROLES.USER;
+                currentUserRole = Permissions.ROLES.USER;
             }
             
-            const canAccessSysConfig = canAccessSystemConfig(currentUserRole);
-            const canAccessSuperAdmin = canAccessSuperAdmin(currentUserRole);
-            const canAccessAdminPages = isAdmin(currentUserRole) || isSystemsAdmin(currentUserRole);
+            // Sidebar visibility
+            const canAccessSysConfig = Permissions.canAccessSystemConfig(currentUserRole);
+            const canAccessSuperAdmin = Permissions.canAccessSuperAdmin(currentUserRole);
+            const canAccessAdminPages = Permissions.isAdmin(currentUserRole) || Permissions.isSystemsAdmin(currentUserRole);
             
             document.querySelectorAll('.sidebar-nav a[href="super-admin.html"]')
                 .forEach(el => el.style.display = canAccessSuperAdmin ? 'flex' : 'none');
@@ -249,7 +289,7 @@ function initAuth(callback) {
             if (callback) callback(user);
         } else {
             currentUser = null;
-            currentUserRole = ROLES.USER;
+            currentUserRole = Permissions.ROLES.USER;
             showLogin();
             seedAdmin();
         }
@@ -365,22 +405,4 @@ window.loadCurrency = loadCurrency;
 window.formatCurrency = formatCurrency;
 window.getCurrency = getCurrency;
 window.currentCurrency = () => currentCurrency;
-
-// Expose role helpers
-window.ROLES = ROLES;
-window.ROLE_ORDER = ROLE_ORDER;
-window.getRoleLevel = getRoleLevel;
-window.isRoleHigherOrEqual = isRoleHigherOrEqual;
-window.isRoleHigher = isRoleHigher;
-window.isSystemsAdmin = isSystemsAdmin;
-window.isAdmin = isAdmin;
-window.isManager = isManager;
-window.isSupervisor = isSupervisor;
-window.canCreateUsers = canCreateUsers;
-window.canManageUser = canManageUser;
-window.canDeleteUser = canDeleteUser;
-window.canEditUser = canEditUser;
-window.canResetPassword = canResetPassword;
-window.canAccessSystemConfig = canAccessSystemConfig;
-window.canAccessSuperAdmin = canAccessSuperAdmin;
-window.getVisibleRoles = getVisibleRoles;
+window.Permissions = Permissions;
