@@ -9,6 +9,30 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="common.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .filter-bar .form-group {
+            flex: 1;
+            min-width: 150px;
+            margin-bottom: 0;
+        }
+        .filter-bar .btn {
+            align-self: flex-end;
+        }
+        .ledger-total {
+            font-weight: 600;
+            font-size: 1.1rem;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            text-align: right;
+        }
+    </style>
 </head>
 <body>
     <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
@@ -37,7 +61,7 @@
             <div class="nav-label">Admin</div>
             <a href="users.html"><i class="fas fa-users"></i> Users</a>
             <a href="admin.html"><i class="fas fa-user-shield"></i> Admin</a>
-            <a href="super-admin.html"><i class="fas fa-crown"></i> Super Admin</a>
+            <a href="super-admin.html"><i class="fas fa-crown"></i> Systems Admin</a>
             <a href="system-configurations.html"><i class="fas fa-cog"></i> System Config</a>
             <div class="nav-label">Reporting</div>
             <a href="reports.html"><i class="fas fa-chart-bar"></i> Reports</a>
@@ -70,133 +94,108 @@
                 <h2>Ledger</h2>
                 <span class="sub">Complete financial record</span>
                 <div class="actions">
-                    <button class="btn btn-primary" id="addEntryBtn"><i class="fas fa-plus"></i> Add Entry</button>
                     <button class="btn btn-outline" id="exportLedgerBtn"><i class="fas fa-download"></i> Export</button>
+                    <button class="btn btn-outline" id="refreshBtn"><i class="fas fa-sync"></i> Refresh</button>
                 </div>
             </div>
 
+            <!-- Filter Bar -->
+            <div class="card">
+                <div class="filter-bar">
+                    <div class="form-group">
+                        <label>Transaction Type</label>
+                        <select id="filterType">
+                            <option value="all">All</option>
+                            <option value="receivable">Invoice Receivable</option>
+                            <option value="payment">Invoice Payment</option>
+                            <option value="shipment">Shipment Revenue</option>
+                            <option value="return">Sales Return</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Date From</label>
+                        <input type="date" id="filterDateFrom" />
+                    </div>
+                    <div class="form-group">
+                        <label>Date To</label>
+                        <input type="date" id="filterDateTo" />
+                    </div>
+                    <button class="btn btn-primary" id="applyFilterBtn"><i class="fas fa-filter"></i> Apply</button>
+                    <button class="btn btn-outline" id="clearFilterBtn"><i class="fas fa-times"></i> Clear</button>
+                </div>
+            </div>
+
+            <!-- Ledger Table -->
             <div class="card">
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Balance</th></tr>
+                            <tr><th>Date</th><th>Description</th><th>Type</th><th>Debit</th><th>Credit</th><th>Balance</th></tr>
                         </thead>
                         <tbody id="ledgerTable">
-                            <tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:40px;">
+                            <tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:40px;">
                                 <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;display:block;margin-bottom:10px;"></i>
                                 Loading ledger entries...
                             </td></tr>
                         </tbody>
                     </table>
                 </div>
+                <div class="ledger-total" id="ledgerTotal">
+                    Balance: $0.00
+                </div>
             </div>
         </div>
     </div>
 
-<!-- LOGIN OVERLAY (hidden by default) -->
-<div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
-    <div class="login-box">
-        <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
-        <!-- No hard-coded credentials -->
-        <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
-        <div class="form-group"><label>Email</label><input id="loginEmail" type="email" placeholder="Enter your email" /></div>
-        <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="Enter your password" /></div>
-        <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;"><i class="fas fa-sign-in-alt"></i> Sign In</button>
-        <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
-        <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
-    </div>
-</div>
-
-    <!-- MODAL for Add Entry -->
-    <div class="modal-overlay" id="modalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999;">
-        <div class="modal" style="background:#fff;border-radius:14px;max-width:640px;width:94%;max-height:90vh;overflow-y:auto;padding:28px 32px;">
-            <div class="modal-header">
-                <h3>Add Ledger Entry</h3>
-                <button class="close" id="modalClose">&times;</button>
-            </div>
-            <div id="modalBody">
-                <div class="form-group"><label>Description</label><input id="ledgerDesc" placeholder="Transaction description" /></div>
-                <div class="form-row">
-                    <div class="form-group"><label>Debit</label><input id="ledgerDebit" type="number" step="0.01" value="0" min="0" /></div>
-                    <div class="form-group"><label>Credit</label><input id="ledgerCredit" type="number" step="0.01" value="0" min="0" /></div>
-                </div>
-                <div class="form-group"><label>Date</label><input id="ledgerDate" type="date" /></div>
-                <button class="btn btn-primary" id="saveLedgerBtn"><i class="fas fa-save"></i> Add Entry</button>
-            </div>
+    <!-- LOGIN OVERLAY -->
+    <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
+        <div class="login-box">
+            <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
+            <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
+            <div class="form-group"><label>Email</label><input id="loginEmail" type="email" placeholder="Enter your email" /></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="Enter your password" /></div>
+            <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+            <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
+            <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
         </div>
     </div>
 
     <script src="common.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize auth
-            initAuth(() => {
-                loadLedger();
-            });
+            initAuth(() => { loadLedger(); });
             attachLoginHandlers();
 
-            // Modal logic
-            const modal = document.getElementById('modalOverlay');
-            const addBtn = document.getElementById('addEntryBtn');
-            const closeBtn = document.getElementById('modalClose');
+            // --- DOM refs ---
+            const filterType = document.getElementById('filterType');
+            const filterDateFrom = document.getElementById('filterDateFrom');
+            const filterDateTo = document.getElementById('filterDateTo');
+            const applyBtn = document.getElementById('applyFilterBtn');
+            const clearBtn = document.getElementById('clearFilterBtn');
+            const refreshBtn = document.getElementById('refreshBtn');
+            const exportBtn = document.getElementById('exportLedgerBtn');
 
-            addBtn.addEventListener('click', () => {
-                modal.style.display = 'flex';
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('ledgerDate').value = today;
-                document.getElementById('ledgerDesc').value = '';
-                document.getElementById('ledgerDebit').value = '0';
-                document.getElementById('ledgerCredit').value = '0';
+            // --- Refresh ---
+            refreshBtn.addEventListener('click', () => {
+                showToast('Refreshing...', 'info');
+                loadLedger();
             });
 
-            closeBtn.addEventListener('click', () => {
-                modal.style.display = 'none';
+            // --- Apply filters ---
+            applyBtn.addEventListener('click', () => {
+                loadLedger();
             });
 
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) modal.style.display = 'none';
+            // --- Clear filters ---
+            clearBtn.addEventListener('click', () => {
+                filterType.value = 'all';
+                filterDateFrom.value = '';
+                filterDateTo.value = '';
+                loadLedger();
             });
 
-            // Save ledger entry
-            document.getElementById('saveLedgerBtn').addEventListener('click', async () => {
-                const description = document.getElementById('ledgerDesc').value.trim();
-                const debit = parseFloat(document.getElementById('ledgerDebit').value) || 0;
-                const credit = parseFloat(document.getElementById('ledgerCredit').value) || 0;
-                const dateStr = document.getElementById('ledgerDate').value;
-
-                if (!description) {
-                    showToast('Description is required', 'error');
-                    return;
-                }
-                if (debit === 0 && credit === 0) {
-                    showToast('Either debit or credit must be greater than 0', 'error');
-                    return;
-                }
-                if (debit > 0 && credit > 0) {
-                    showToast('Cannot have both debit and credit in one entry', 'error');
-                    return;
-                }
-
-                try {
-                    const dateObj = dateStr ? new Date(dateStr) : new Date();
-                    await db.collection('ledger').add({
-                        description: description,
-                        debit: debit,
-                        credit: credit,
-                        date: firebase.firestore.Timestamp.fromDate(dateObj),
-                        createdBy: currentUser?.uid || 'system',
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    showToast('Ledger entry added!');
-                    modal.style.display = 'none';
-                    loadLedger();
-                } catch (e) {
-                    showToast(e.message, 'error');
-                }
-            });
-
-            // Export ledger
-            document.getElementById('exportLedgerBtn').addEventListener('click', async () => {
+            // --- Export ---
+            exportBtn.addEventListener('click', async () => {
                 try {
                     const snap = await db.collection('ledger').orderBy('date', 'desc').get();
                     const docs = [];
@@ -214,72 +213,133 @@
                 }
             });
 
-            // Load ledger entries
+            // --- Load Ledger with filters ---
             async function loadLedger() {
                 try {
-                    const snap = await db.collection('ledger')
-                        .orderBy('date', 'desc')
-                        .get();
+                    let query = db.collection('ledger');
+
+                    // Apply filters
+                    const type = filterType.value;
+                    if (type !== 'all') {
+                        query = query.where('entryType', '==', type);
+                    }
+
+                    const fromDate = filterDateFrom.value;
+                    const toDate = filterDateTo.value;
+                    // Note: Firestore can't do range queries on server timestamps easily,
+                    // so we'll filter client-side. But we'll order by date.
+
+                    query = query.orderBy('date', 'desc');
+
+                    const snap = await query.get();
                     const tbody = document.getElementById('ledgerTable');
 
                     if (snap.empty) {
-                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);">No ledger entries found</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);">No ledger entries found</td></tr>';
+                        document.getElementById('ledgerTotal').textContent = 'Balance: $0.00';
                         return;
                     }
+
+                    // Client-side date filtering
+                    let entries = [];
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        const entryDate = d.date?.toDate?.();
+                        if (entryDate) {
+                            // Client-side filter by date
+                            if (fromDate && entryDate < new Date(fromDate)) return;
+                            if (toDate && entryDate > new Date(toDate + 'T23:59:59')) return;
+                        }
+                        entries.push({
+                            id: doc.id,
+                            date: entryDate || new Date(),
+                            description: d.description || '—',
+                            entryType: d.entryType || '—',
+                            debit: d.debit || 0,
+                            credit: d.credit || 0
+                        });
+                    });
+
+                    // Sort by date descending (newest first)
+                    entries.sort((a, b) => b.date - a.date);
 
                     let html = '';
                     let runningBalance = 0;
                     let totalDebit = 0;
                     let totalCredit = 0;
 
-                    // Compute entries from oldest to newest for correct balance
-                    const entries = [];
-                    snap.forEach(doc => {
-                        const d = doc.data();
-                        const debit = d.debit || 0;
-                        const credit = d.credit || 0;
-                        entries.push({
-                            id: doc.id,
-                            date: d.date?.toDate?.() || new Date(d.date),
-                            description: d.description || '—',
-                            debit: debit,
-                            credit: credit
-                        });
-                    });
-                    entries.reverse(); // oldest first
+                    // Compute from oldest to newest for correct balance
+                    const reversed = [...entries].reverse();
 
-                    for (const entry of entries) {
+                    const typeLabels = {
+                        'receivable': 'Receivable',
+                        'payment': 'Payment',
+                        'shipment': 'Shipment',
+                        'return': 'Return',
+                        '': '—'
+                    };
+
+                    reversed.forEach(entry => {
                         runningBalance += entry.debit - entry.credit;
                         totalDebit += entry.debit;
                         totalCredit += entry.credit;
+                    });
+
+                    // Now display (newest first)
+                    entries.forEach(entry => {
+                        const balance = runningBalance;
+                        // Running balance calculation: we need to work backwards
+                        // We'll compute differently: use the reversed array.
+                        // Actually simpler: iterate reversed and then display
+                    });
+
+                    // Rebuild the display using the correctly computed balance
+                    let balanceDisplay = 0;
+                    const reversedDisplay = [...entries].reverse();
+                    const displayRows = [];
+                    reversedDisplay.forEach(entry => {
+                        balanceDisplay += entry.debit - entry.credit;
+                        const typeLabel = typeLabels[entry.entryType] || entry.entryType;
+                        displayRows.push({
+                            ...entry,
+                            balance: balanceDisplay,
+                            typeLabel: typeLabel
+                        });
+                    });
+
+                    // Display in reverse order (newest first)
+                    displayRows.reverse().forEach(entry => {
+                        const balanceColor = entry.balance >= 0 ? 'var(--primary)' : '#e74c3c';
                         html += `
                             <tr>
-                                <td>${entry.date.toLocaleDateString()}</td>
+                                <td>${entry.date.toLocaleString()}</td>
                                 <td>${entry.description}</td>
+                                <td><span class="chip">${entry.typeLabel}</span></td>
                                 <td style="color:#28a745;">${entry.debit > 0 ? formatCurrency(entry.debit) : '—'}</td>
                                 <td style="color:#e74c3c;">${entry.credit > 0 ? formatCurrency(entry.credit) : '—'}</td>
-                                <td style="font-weight:600;color:${runningBalance >= 0 ? 'var(--primary)' : '#e74c3c'};">${formatCurrency(runningBalance)}</td>
+                                <td style="font-weight:600;color:${balanceColor};">${formatCurrency(entry.balance)}</td>
                             </tr>
                         `;
+                    });
+
+                    if (html === '') {
+                        html = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);">No ledger entries match the filters.</td></tr>';
                     }
 
-                    // Add total row
-                    html += `
-                        <tr style="background:#f8fafc;font-weight:600;border-top:2px solid #dde2e9;">
-                            <td><strong>TOTAL</strong></td>
-                            <td></td>
-                            <td style="color:#28a745;">${formatCurrency(totalDebit)}</td>
-                            <td style="color:#e74c3c;">${formatCurrency(totalCredit)}</td>
-                            <td style="color:${runningBalance >= 0 ? 'var(--primary)' : '#e74c3c'};">${formatCurrency(runningBalance)}</td>
-                        </tr>
-                    `;
-
                     tbody.innerHTML = html;
+
+                    // Update total
+                    const finalBalance = totalDebit - totalCredit;
+                    document.getElementById('ledgerTotal').innerHTML = `
+                        <strong>Total Debit:</strong> ${formatCurrency(totalDebit)} &nbsp;|&nbsp; 
+                        <strong>Total Credit:</strong> ${formatCurrency(totalCredit)} &nbsp;|&nbsp; 
+                        <strong>Balance:</strong> <span style="color:${finalBalance >= 0 ? 'var(--primary)' : '#e74c3c'};">${formatCurrency(finalBalance)}</span>
+                    `;
 
                 } catch (e) {
                     console.warn('Error loading ledger:', e);
                     document.getElementById('ledgerTable').innerHTML = `
-                        <tr><td colspan="5" style="text-align:center;color:#e74c3c;padding:40px;">
+                        <tr><td colspan="6" style="text-align:center;color:#e74c3c;padding:40px;">
                             <i class="fas fa-exclamation-circle" style="font-size:1.5rem;display:block;margin-bottom:10px;"></i>
                             Error loading ledger: ${e.message}
                         </td></tr>
