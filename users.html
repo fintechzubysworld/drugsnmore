@@ -14,8 +14,9 @@
 <body>
     <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
 
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR (same as before) -->
     <aside class="sidebar" id="sidebar">
+        <!-- ... same sidebar ... -->
         <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
         <nav class="sidebar-nav">
             <div class="nav-label">Main</div>
@@ -117,7 +118,6 @@
                         <option value="user">User</option>
                         <option value="supervisor">Supervisor</option>
                         <option value="manager">Manager</option>
-                        <!-- systems_administrator option added dynamically -->
                     </select>
                 </div>
                 <div class="form-group" style="margin-top:16px;border-top:1px solid #eef1f5;padding-top:16px;">
@@ -172,6 +172,15 @@
                 return 'user';
             }
 
+            // ----- Helper to safely call permission functions from window -----
+            function safeCall(fn, ...args) {
+                if (typeof window[fn] === 'function') {
+                    return window[fn](...args);
+                }
+                console.warn('Function ' + fn + ' not found, using fallback');
+                return false;
+            }
+
             // ----- Add User Modal -----
             const addModal = document.getElementById('addModal');
             const addClose = document.getElementById('addModalClose');
@@ -198,10 +207,9 @@
                 });
             }
 
-            // Open Add User modal
             newUserBtn.addEventListener('click', () => {
                 const role = getCurrentRole();
-                if (!canCreateUsers(role)) {
+                if (!safeCall('canCreateUsers', role)) {
                     showToast('You do not have permission to create users.', 'error');
                     return;
                 }
@@ -209,7 +217,7 @@
                 document.getElementById('newUserEmail').value = '';
                 document.getElementById('newUserPass').value = '';
                 document.getElementById('adminPasswordForCreation').value = '';
-                const includeSystemsAdmin = isSystemsAdmin(role);
+                const includeSystemsAdmin = safeCall('isSystemsAdmin', role);
                 populateRoleSelect('newUserRole', includeSystemsAdmin);
                 document.getElementById('newUserRole').value = 'user';
             });
@@ -217,7 +225,6 @@
             addClose.addEventListener('click', () => { addModal.style.display = 'none'; });
             addModal.addEventListener('click', (e) => { if (e.target === addModal) addModal.style.display = 'none'; });
 
-            // Save new user
             document.getElementById('saveUserBtn').addEventListener('click', async () => {
                 const email = document.getElementById('newUserEmail').value.trim();
                 const pass = document.getElementById('newUserPass').value;
@@ -227,7 +234,7 @@
 
                 if (!email || !pass) { showToast('Please fill in email and password', 'error'); return; }
                 if (!adminPass) { showToast('Please enter your password', 'error'); return; }
-                if (!canCreateUsers(role)) { showToast('Permission denied.', 'error'); return; }
+                if (!safeCall('canCreateUsers', role)) { showToast('Permission denied.', 'error'); return; }
 
                 const adminEmail = currentUser.email;
 
@@ -258,21 +265,19 @@
             editClose.addEventListener('click', () => { editModal.style.display = 'none'; });
             editModal.addEventListener('click', (e) => { if (e.target === editModal) editModal.style.display = 'none'; });
 
-            // Save edited user
             document.getElementById('saveEditBtn').addEventListener('click', async () => {
                 const displayName = document.getElementById('editDisplayName').value.trim();
                 const newRole = document.getElementById('editUserRole').value;
                 const role = getCurrentRole();
                 if (!editingUserId) return;
 
-                // Check if the user being edited is systems_administrator and current user is not systems_administrator
                 const targetDoc = await db.collection('users').doc(editingUserId).get();
                 const targetRole = targetDoc.data()?.role;
-                if (!canEditUser(role, targetRole)) {
+                if (!safeCall('canEditUser', role, targetRole)) {
                     showToast('You do not have permission to edit this user.', 'error');
                     return;
                 }
-                if (newRole === 'systems_administrator' && !isSystemsAdmin(role)) {
+                if (newRole === 'systems_administrator' && !safeCall('isSystemsAdmin', role)) {
                     showToast('You cannot assign Systems Administrator role.', 'error');
                     return;
                 }
@@ -302,22 +307,28 @@
                     }
 
                     const currentRole = getCurrentRole();
-                    const visibleRoles = getVisibleRoles(currentRole);
+                    let visibleRoles = [];
+                    if (typeof window.getVisibleRoles === 'function') {
+                        visibleRoles = window.getVisibleRoles(currentRole);
+                    } else {
+                        // Fallback: only show same role
+                        visibleRoles = [currentRole];
+                    }
 
                     let html = '';
                     snap.forEach(doc => {
                         const d = doc.data();
                         const userRole = d.role || 'user';
-                        if (!visibleRoles.includes(userRole)) return; // skip
+                        if (!visibleRoles.includes(userRole)) return;
 
                         const isSystemsAdminUser = userRole === 'systems_administrator';
                         const isAdminUser = userRole === 'admin';
                         const isManagerUser = userRole === 'manager';
                         const isSupervisorUser = userRole === 'supervisor';
 
-                        let canEdit = canEditUser(currentRole, userRole);
-                        let canDelete = canDeleteUser(currentRole, userRole);
-                        let canReset = canResetPassword(currentRole, userRole);
+                        let canEdit = safeCall('canEditUser', currentRole, userRole);
+                        let canDelete = safeCall('canDeleteUser', currentRole, userRole);
+                        let canReset = safeCall('canResetPassword', currentRole, userRole);
 
                         const roleDisplay = isSystemsAdminUser ? '<span class="super-badge">Systems Admin</span>' :
                                             isAdminUser ? '<span class="admin-badge">Admin</span>' :
@@ -356,7 +367,7 @@
                             editingUserId = userId;
                             document.getElementById('editUserEmail').value = d.email || '';
                             document.getElementById('editDisplayName').value = d.displayName || '';
-                            const includeSystemsAdmin = isSystemsAdmin(getCurrentRole());
+                            const includeSystemsAdmin = safeCall('isSystemsAdmin', getCurrentRole());
                             populateRoleSelect('editUserRole', includeSystemsAdmin);
                             document.getElementById('editUserRole').value = d.role || 'user';
                             editModal.style.display = 'flex';
@@ -392,7 +403,6 @@
                 }
             }
 
-            // Expose loadUsers globally
             window.loadUsers = loadUsers;
         });
     </script>
