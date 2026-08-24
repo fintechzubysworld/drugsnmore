@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="common.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <style>
+        /* same styles as before */
         .invoice-sheet input[type="text"],
         .invoice-sheet input[type="number"] {
             width: 100%;
@@ -177,12 +178,20 @@
         .export-dropdown .btn-sm {
             padding: 4px 8px;
         }
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .badge-confirmed {
+            background: #28a745;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
     <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
 
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR (same as before, omitted for brevity but include full) -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
         <nav class="sidebar-nav">
@@ -247,10 +256,10 @@
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr><th>#</th><th>Supplier</th><th>Amount</th><th>Status</th><th>Date</th><th>Action</th></tr>
+                            <tr><th>#</th><th>Supplier</th><th>Amount</th><th>Status</th><th>Confirmed</th><th>Date</th><th>Action</th></tr>
                         </thead>
                         <tbody id="invoiceTable">
-                            <tr><td colspan="6" style="text-align:center;color:var(--text-light)">No invoices</td></tr>
+                            <tr><td colspan="7" style="text-align:center;color:var(--text-light)">No invoices</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -258,7 +267,7 @@
         </div>
     </div>
 
-    <!-- LOGIN OVERLAY -->
+    <!-- LOGIN OVERLAY (same as before) -->
     <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
         <div class="login-box">
             <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
@@ -271,18 +280,12 @@
         </div>
     </div>
 
-    <!-- NEW INVOICE MODAL -->
+    <!-- NEW INVOICE MODAL (same as before) -->
     <div class="modal-overlay" id="modalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999;">
         <div class="modal" style="background:#fff;border-radius:14px;max-width:900px;width:95%;max-height:90vh;overflow-y:auto;padding:28px 32px;">
-            <div class="modal-header">
-                <h3>New Invoice</h3>
-                <button class="close" id="modalClose">&times;</button>
-            </div>
+            <div class="modal-header"><h3>New Invoice</h3><button class="close" id="modalClose">&times;</button></div>
             <div id="modalBody">
-                <div class="form-group">
-                    <label>Supplier</label>
-                    <input id="invSupplier" placeholder="Supplier name" />
-                </div>
+                <div class="form-group"><label>Supplier</label><input id="invSupplier" placeholder="Supplier name" /></div>
                 <div class="import-area" id="importArea">
                     <i class="fas fa-upload" style="font-size:1.5rem;display:block;margin-bottom:8px;color:var(--primary);"></i>
                     <p style="color:var(--text-light);">Click to import CSV, Excel, or JSON</p>
@@ -295,45 +298,17 @@
                     </div>
                     <div class="table-wrap">
                         <table class="invoice-sheet" id="invoiceSheet">
-                            <thead>
-                                <tr>
-                                    <th>Code</th>
-                                    <th>Item</th>
-                                    <th>Packing Qty</th>
-                                    <th>Price</th>
-                                    <th>Qty</th>
-                                    <th>Amount</th>
-                                    <th>Discount %</th>
-                                    <th>VAT %</th>
-                                    <th><i class="fas fa-trash"></i></th>
-                                </tr>
-                            </thead>
+                            <thead><tr><th>Code</th><th>Item</th><th>Packing Qty</th><th>Price</th><th>Qty</th><th>Amount</th><th>Discount %</th><th>VAT %</th><th><i class="fas fa-trash"></i></th></tr></thead>
                             <tbody id="invoiceSheetBody"></tbody>
                             <tfoot id="invoiceSheetFoot" class="totals-row">
-                                <tr>
-                                    <td colspan="5" style="text-align:right;">Totals</td>
-                                    <td id="invTotalAmount">0.00</td>
-                                    <td id="invTotalDiscount">0.00</td>
-                                    <td id="invTotalVat">0.00</td>
-                                    <td></td>
-                                </tr>
+                                <tr><td colspan="5" style="text-align:right;">Totals</td><td id="invTotalAmount">0.00</td><td id="invTotalDiscount">0.00</td><td id="invTotalVat">0.00</td><td></td></tr>
                             </tfoot>
                         </table>
                     </div>
                 </div>
                 <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;">
-                    <div style="flex:1;">
-                        <div class="form-group">
-                            <label>Status</label>
-                            <select id="invStatus">
-                                <option value="pending">Pending</option>
-                                <option value="paid">Paid</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div style="flex:1;display:flex;align-items:flex-end;">
-                        <button class="btn btn-primary" id="saveInvBtn" style="width:100%;"><i class="fas fa-save"></i> Create Invoice</button>
-                    </div>
+                    <div style="flex:1;"><div class="form-group"><label>Status</label><select id="invStatus"><option value="pending">Pending</option><option value="paid">Paid</option></select></div></div>
+                    <div style="flex:1;display:flex;align-items:flex-end;"><button class="btn btn-primary" id="saveInvBtn" style="width:100%;"><i class="fas fa-save"></i> Create Invoice</button></div>
                 </div>
             </div>
         </div>
@@ -349,8 +324,21 @@
                     <button class="close" id="viewModalClose">&times;</button>
                 </div>
             </div>
-            <div id="viewModalBody">
-                <!-- Invoice content rendered here -->
+            <div id="viewModalBody"></div>
+        </div>
+    </div>
+
+    <!-- CONFIRM INVOICE MODAL -->
+    <div class="modal-overlay" id="confirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:1001;">
+        <div class="modal" style="background:#fff;border-radius:14px;max-width:500px;width:90%;padding:28px 32px;">
+            <div class="modal-header">
+                <h3>Confirm Invoice</h3>
+                <button class="close" id="confirmModalClose">&times;</button>
+            </div>
+            <div id="confirmModalBody">
+                <p style="margin-bottom:16px;color:var(--text-light);">Enter the reference number for this invoice confirmation.</p>
+                <div class="form-group"><label>Reference Number</label><input id="confirmReference" placeholder="e.g. REF-2024-001" /></div>
+                <button class="btn btn-primary" id="confirmInvoiceBtn" style="width:100%;"><i class="fas fa-check-circle"></i> Confirm Invoice</button>
             </div>
         </div>
     </div>
@@ -361,6 +349,7 @@
             // --- State ---
             let invoiceRows = [];
             let rowIdCounter = 0;
+            let confirmInvoiceId = null; // store the invoice being confirmed
 
             // --- DOM refs ---
             const modal = document.getElementById('modalOverlay');
@@ -371,12 +360,15 @@
             const saveBtn = document.getElementById('saveInvBtn');
             const importArea = document.getElementById('importArea');
             const fileInput = document.getElementById('fileInput');
-
             const viewModal = document.getElementById('viewModal');
             const viewClose = document.getElementById('viewModalClose');
             const printBtn = document.getElementById('printInvoiceBtn');
             const viewBody = document.getElementById('viewModalBody');
             const refreshBtn = document.getElementById('refreshBtn');
+            const confirmModal = document.getElementById('confirmModal');
+            const confirmClose = document.getElementById('confirmModalClose');
+            const confirmRef = document.getElementById('confirmReference');
+            const confirmBtn = document.getElementById('confirmInvoiceBtn');
 
             // --- Initialize auth ---
             initAuth(() => {
@@ -392,7 +384,7 @@
                 });
             }
 
-            // --- New Invoice modal open ---
+            // --- New Invoice modal ---
             if (newBtn) {
                 newBtn.addEventListener('click', () => {
                     modal.style.display = 'flex';
@@ -422,15 +414,24 @@
                 });
             }
 
-            // --- Print invoice (browser print) ---
+            // --- Print ---
             if (printBtn) {
                 printBtn.addEventListener('click', function() {
-                    // Trigger browser print
                     window.print();
                 });
             }
 
-            // --- Import file ---
+            // --- Confirm modal close ---
+            if (confirmClose) {
+                confirmClose.addEventListener('click', () => { confirmModal.style.display = 'none'; });
+            }
+            if (confirmModal) {
+                confirmModal.addEventListener('click', (e) => {
+                    if (e.target === confirmModal) confirmModal.style.display = 'none';
+                });
+            }
+
+            // --- Import file (same as before) ---
             if (importArea) {
                 importArea.addEventListener('click', () => {
                     fileInput.click();
@@ -701,8 +702,8 @@
                     const grandTotal = subtotal - totalDiscount + totalVat;
                     const status = document.getElementById('invStatus').value;
 
-                    // Get user display name or email for "created by"
                     const creatorName = currentUser?.displayName || currentUser?.email || 'System';
+                    const creatorUid = currentUser?.uid || 'system';
 
                     try {
                         await db.collection('invoices').add({
@@ -721,7 +722,9 @@
                             totalVat: totalVat,
                             amount: grandTotal,
                             status: status,
-                            createdBy: creatorName,  // now stores name/email, not UID
+                            confirmed: false,
+                            createdBy: creatorName,
+                            createdByUid: creatorUid,
                             createdAt: firebase.firestore.FieldValue.serverTimestamp()
                         });
                         showToast('Invoice created!');
@@ -733,6 +736,102 @@
                 });
             }
 
+            // --- Confirm Invoice ---
+            async function confirmInvoice(invoiceId, referenceNumber) {
+                try {
+                    const invoiceRef = db.collection('invoices').doc(invoiceId);
+                    const doc = await invoiceRef.get();
+                    if (!doc.exists) return showToast('Invoice not found', 'error');
+                    const data = doc.data();
+                    if (data.confirmed) return showToast('Invoice already confirmed', 'error');
+                    if (data.createdByUid === currentUser.uid) return showToast('You cannot confirm your own invoice', 'error');
+
+                    // Update invoice
+                    await invoiceRef.update({
+                        confirmed: true,
+                        confirmedBy: currentUser?.displayName || currentUser?.email || 'System',
+                        confirmedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        referenceNumber: referenceNumber
+                    });
+
+                    // Move items to warehouse
+                    const items = data.items || [];
+                    const warehouseBatch = db.batch();
+                    items.forEach(item => {
+                        const whRef = db.collection('warehouse').doc();
+                        warehouseBatch.set(whRef, {
+                            code: item.code || 'INV-' + invoiceId.slice(0,6),
+                            item: item.item,
+                            qty: item.qty,
+                            price: item.price,
+                            location: 'Pending Shelf - Invoice ' + invoiceId.slice(0,6),
+                            sourceInvoice: invoiceId,
+                            status: 'pending_shelf',
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    });
+                    await warehouseBatch.commit();
+
+                    showToast('Invoice confirmed and items moved to warehouse!');
+                    confirmModal.style.display = 'none';
+                    loadInvoices();
+                } catch (e) {
+                    showToast('Confirmation error: ' + e.message, 'error');
+                }
+            }
+
+            // ---- Mark Paid ----
+            async function markPaidAndMoveToShelf(invoiceId) {
+                if (!confirm('Mark this invoice as paid? This will move items from warehouse to pharmacy shelf.')) return;
+                try {
+                    const invoiceRef = db.collection('invoices').doc(invoiceId);
+                    const doc = await invoiceRef.get();
+                    if (!doc.exists) return showToast('Invoice not found', 'error');
+                    const data = doc.data();
+                    if (!data.confirmed) return showToast('Invoice must be confirmed before marking paid', 'error');
+
+                    // Move items from warehouse to shelf
+                    const whSnap = await db.collection('warehouse')
+                        .where('sourceInvoice', '==', invoiceId)
+                        .get();
+                    if (whSnap.empty) {
+                        showToast('No warehouse items found for this invoice. Continuing...', 'warning');
+                    } else {
+                        const batch = db.batch();
+                        whSnap.forEach(whDoc => {
+                            const whData = whDoc.data();
+                            // Create shelf entry
+                            const shelfRef = db.collection('shelf').doc();
+                            batch.set(shelfRef, {
+                                code: whData.code || 'SH-' + invoiceId.slice(0,6),
+                                item: whData.item,
+                                qty: whData.qty,
+                                price: whData.price,
+                                shelf: 'Invoice ' + invoiceId.slice(0,6),
+                                sourceInvoice: invoiceId,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            // Delete warehouse entry
+                            batch.delete(whDoc.ref);
+                        });
+                        await batch.commit();
+                    }
+
+                    // Update invoice status to paid
+                    await invoiceRef.update({
+                        status: 'paid',
+                        paidAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    showToast('Invoice marked as paid and items moved to pharmacy shelf!');
+                    loadInvoices();
+                    if (window.loadOutstandingInvoices) window.loadOutstandingInvoices();
+                } catch (e) {
+                    showToast('Error: ' + e.message, 'error');
+                }
+            }
+
             // --- Load invoices ---
             async function loadInvoices() {
                 try {
@@ -741,7 +840,7 @@
                     if (!tbody) return;
 
                     if (snap.empty) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light)">No invoices</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-light)">No invoices</td></tr>';
                         return;
                     }
 
@@ -750,17 +849,23 @@
                         const d = doc.data();
                         const statusClass = d.status === 'paid' ? 'badge-success' :
                                           d.status === 'pending' ? 'badge-warning' : 'badge-info';
+                        const confirmedClass = d.confirmed ? 'badge-success' : 'badge-warning';
+                        const confirmedText = d.confirmed ? 'Yes' : 'No';
+                        const isCreator = currentUser?.uid === d.createdByUid;
+
                         html += `
                             <tr>
                                 <td>${doc.id.slice(0,6)}</td>
                                 <td>${d.supplier || '—'}</td>
                                 <td>${formatCurrency(d.amount || 0)}</td>
                                 <td><span class="badge ${statusClass}">${d.status || 'pending'}</span></td>
+                                <td><span class="badge ${confirmedClass}">${confirmedText}</span></td>
                                 <td>${d.createdAt?.toDate?.()?.toLocaleDateString() || '—'}</td>
                                 <td>
                                     <div class="action-btn-group">
                                         <button class="btn btn-sm btn-outline" onclick="viewInvoice('${doc.id}')"><i class="fas fa-eye"></i></button>
-                                        ${d.status === 'pending' ? `<button class="btn btn-sm btn-success" onclick="markPaid('${doc.id}')"><i class="fas fa-check"></i></button>` : ''}
+                                        ${d.status === 'pending' && !d.confirmed && !isCreator ? `<button class="btn btn-sm btn-primary" onclick="openConfirmModal('${doc.id}')"><i class="fas fa-check-circle"></i></button>` : ''}
+                                        ${d.status === 'pending' && d.confirmed ? `<button class="btn btn-sm btn-success" onclick="markPaidAndMoveToShelf('${doc.id}')"><i class="fas fa-check"></i></button>` : ''}
                                         <div class="export-dropdown">
                                             <button class="btn btn-sm btn-outline"><i class="fas fa-download"></i></button>
                                             <div class="export-dropdown-content">
@@ -777,7 +882,7 @@
                     });
                     tbody.innerHTML = html;
 
-                    // ---- View Invoice (printable) ----
+                    // ---- View Invoice ----
                     window.viewInvoice = async (id) => {
                         try {
                             const doc = await db.collection('invoices').doc(id).get();
@@ -808,8 +913,9 @@
                             }
 
                             const statusBadge = d.status === 'paid' ? 'badge-success' : 'badge-warning';
-                            // Show creator name (now stored as name/email)
                             const createdBy = d.createdBy || 'System';
+                            const confirmedBy = d.confirmedBy || '—';
+                            const refNumber = d.referenceNumber || '—';
                             const viewHtml = `
                                 <div class="print-invoice" id="printArea">
                                     <div class="header">
@@ -823,7 +929,9 @@
                                         <div>
                                             <strong>Supplier:</strong> ${d.supplier || '—'}<br />
                                             <strong>Date:</strong> ${d.createdAt?.toDate?.()?.toLocaleString() || '—'}<br />
-                                            <strong>Status:</strong> <span class="badge ${statusBadge}">${d.status || 'pending'}</span>
+                                            <strong>Status:</strong> <span class="badge ${statusBadge}">${d.status || 'pending'}</span><br />
+                                            <strong>Confirmed:</strong> ${d.confirmed ? 'Yes' : 'No'} ${d.confirmed ? `(by ${confirmedBy})` : ''}<br />
+                                            ${d.confirmed ? `<strong>Reference:</strong> ${refNumber}` : ''}
                                         </div>
                                         <div style="text-align:right;">
                                             <strong>Invoice #:</strong> ${id.slice(0,8).toUpperCase()}<br />
@@ -859,7 +967,6 @@
                             viewBody.innerHTML = viewHtml;
                             viewModal.style.display = 'flex';
 
-                            // Ensure print button triggers browser print
                             printBtn.onclick = function() {
                                 window.print();
                             };
@@ -868,22 +975,27 @@
                         }
                     };
 
-                    // ---- Mark Paid ----
-                    window.markPaid = async (id) => {
-                        if (!confirm('Mark this invoice as paid?')) return;
-                        try {
-                            await db.collection('invoices').doc(id).update({
-                                status: 'paid',
-                                paidAt: firebase.firestore.FieldValue.serverTimestamp(),
-                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                            });
-                            showToast('Invoice marked as paid');
-                            loadInvoices();
-                            if (window.loadOutstandingInvoices) window.loadOutstandingInvoices();
-                        } catch (e) {
-                            showToast(e.message, 'error');
-                        }
+                    // ---- Mark Paid (overwrite with new function) ----
+                    window.markPaidAndMoveToShelf = markPaidAndMoveToShelf;
+
+                    // ---- Open Confirm Modal ----
+                    window.openConfirmModal = function(invoiceId) {
+                        confirmInvoiceId = invoiceId;
+                        confirmRef.value = '';
+                        confirmModal.style.display = 'flex';
                     };
+
+                    // ---- Confirm Button ----
+                    confirmBtn.addEventListener('click', async () => {
+                        const ref = confirmRef.value.trim();
+                        if (!ref) {
+                            showToast('Please enter a reference number', 'error');
+                            return;
+                        }
+                        if (confirmInvoiceId) {
+                            await confirmInvoice(confirmInvoiceId, ref);
+                        }
+                    });
 
                     // ---- Delete Invoice ----
                     window.deleteInvoice = async (id) => {
@@ -897,7 +1009,7 @@
                         }
                     };
 
-                    // ---- Export Invoice (Excel, CSV, JSON) ----
+                    // ---- Export Invoice ----
                     window.exportInvoice = async (id, format) => {
                         try {
                             const doc = await db.collection('invoices').doc(id).get();
@@ -946,7 +1058,9 @@
                                 { 'Item': 'STATUS', 'Item #': d.status || '' },
                                 { 'Item': 'DATE', 'Item #': d.createdAt?.toDate?.()?.toLocaleString() || '' },
                                 { 'Item': 'INVOICE #', 'Item #': id.slice(0,8).toUpperCase() },
-                                { 'Item': 'CREATED BY', 'Item #': d.createdBy || 'System' }
+                                { 'Item': 'CREATED BY', 'Item #': d.createdBy || 'System' },
+                                { 'Item': 'CONFIRMED', 'Item #': d.confirmed ? 'Yes' : 'No' },
+                                { 'Item': 'REFERENCE', 'Item #': d.referenceNumber || '—' }
                             ];
                             metaRows.forEach(m => rows.push(m));
 
@@ -957,6 +1071,8 @@
                                     id: id,
                                     supplier: d.supplier,
                                     status: d.status,
+                                    confirmed: d.confirmed || false,
+                                    referenceNumber: d.referenceNumber || null,
                                     createdBy: d.createdBy || 'System',
                                     date: d.createdAt?.toDate?.()?.toISOString(),
                                     subtotal: d.subtotal,
@@ -1016,7 +1132,7 @@
                     console.warn('Error loading invoices:', e);
                     const tbody = document.getElementById('invoiceTable');
                     if (tbody) {
-                        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#e74c3c;">Error loading invoices: ${e.message}</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#e74c3c;">Error loading invoices: ${e.message}</td></tr>`;
                     }
                 }
             }
