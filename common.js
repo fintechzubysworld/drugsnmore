@@ -24,9 +24,11 @@ const ROLES = {
     USER: 'user'
 };
 
-// ----- PERMISSION HELPERS -----
+// ============================================================
+//  PERMISSION HELPERS (must be defined before initAuth)
+// ============================================================
 function isSystemsAdmin(role) {
-    return role === ROLES.SYSTEMS_ADMIN || role === 'superadmin'; // backward compatibility
+    return role === ROLES.SYSTEMS_ADMIN || role === 'superadmin';
 }
 
 function isAdmin(role) {
@@ -71,7 +73,7 @@ function canAccessSuperAdmin(role) {
 
 // ----- GLOBAL STATE -----
 let currentUser = null;
-let currentUserRole = 'user';
+let currentUserRole = ROLES.USER;
 let currentCurrency = '$';
 
 // ----- DOM HELPERS -----
@@ -144,7 +146,6 @@ async function seedAdmin() {
     const adminPass = 'systemsadmin123';
     
     try {
-        // Check if any user exists in Firestore
         const snap = await db.collection('users').limit(1).get();
         if (!snap.empty) {
             console.log('✅ Users exist – skipping seed');
@@ -200,7 +201,7 @@ function initAuth(callback) {
                 currentUserRole = ROLES.USER;
             }
             
-            // Show/hide admin links based on role
+            // Show/hide sidebar links based on role
             const canAccessSysConfig = canAccessSystemConfig(currentUserRole);
             const canAccessSuperAdmin = canAccessSuperAdmin(currentUserRole);
             const canAccessAdminPages = isAdmin(currentUserRole) || isSystemsAdmin(currentUserRole) || isManager(currentUserRole);
