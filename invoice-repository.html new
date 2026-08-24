@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Invoice Repository · Drugs n' More</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="common.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        .invoice-sheet input[type="text"],
+        .invoice-sheet input[type="number"] {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #dde2e9;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            background: #fff;
+            transition: 0.2s;
+        }
+        .invoice-sheet input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(11, 110, 79, 0.15);
+            outline: none;
+        }
+        .invoice-sheet .totals-row td {
+            background: #f8fafc;
+            font-weight: 600;
+        }
+        .invoice-sheet .remove-row-btn {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .invoice-sheet .remove-row-btn:hover {
+            color: #c0392b;
+            transform: scale(1.2);
+        }
+        .modal {
+            max-width: 900px;
+            width: 95%;
+        }
+        .modal .form-group label {
+            font-weight: 600;
+        }
+        .print-invoice {
+            background: #fff;
+            padding: 30px 40px;
+            max-width: 800px;
+            margin: 0 auto;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        .print-invoice .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+        .print-invoice .header h2 {
+            color: var(--primary);
+        }
+        .print-invoice .invoice-details {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+        .print-invoice table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+        }
+        .print-invoice table th {
+            background: #f8fafc;
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 2px solid #dde2e9;
+        }
+        .print-invoice table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eef1f5;
+        }
+        .print-invoice .totals {
+            margin-top: 16px;
+            text-align: right;
+            font-weight: 600;
+        }
+        .print-invoice .totals div {
+            padding: 4px 0;
+        }
+        .print-invoice .status-badge {
+            display: inline-block;
+            padding: 4px 16px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .print-invoice { padding: 20px; }
+            .print-invoice .header { border-bottom-color: #000; }
+        }
+        .import-area {
+            border: 2px dashed #dde2e9;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 12px;
+        }
+        .import-area:hover {
+            border-color: var(--primary);
+            background: #f8fafc;
+        }
+        .import-area input[type="file"] {
+            display: none;
+        }
+        .action-btn-group {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .action-btn-group .btn-sm {
+            padding: 4px 8px;
+            font-size: 0.7rem;
+        }
+        .export-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .export-dropdown-content {
+            display: none;
+            position: absolute;
+            background: #fff;
+            min-width: 120px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            z-index: 1;
+            right: 0;
+            border: 1px solid #eef1f5;
+        }
+        .export-dropdown-content button {
+            display: block;
+            width: 100%;
+            padding: 8px 12px;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: 0.2s;
+            font-size: 0.8rem;
+        }
+        .export-dropdown-content button:hover {
+            background: #f0f4f9;
+        }
+        .export-dropdown:hover .export-dropdown-content {
+            display: block;
+        }
+        .export-dropdown .btn-sm {
+            padding: 4px 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
+        <nav class="sidebar-nav">
+            <div class="nav-label">Main</div>
+            <a href="index.html"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="dispatch.html"><i class="fas fa-truck"></i> Dispatch</a>
+            <a href="receive.html"><i class="fas fa-arrow-down"></i> Receive</a>
+            <a href="warehouse.html"><i class="fas fa-warehouse"></i> Warehouse</a>
+            <a href="pharmacy-shelf.html"><i class="fas fa-shelves"></i> Pharmacy Shelf</a>
+            <a href="branches.html"><i class="fas fa-store"></i> Branches</a>
+            <div class="nav-label">Supply</div>
+            <a href="suppliers.html"><i class="fas fa-handshake"></i> Suppliers</a>
+            <a href="request-shipment.html"><i class="fas fa-paper-plane"></i> Request Shipment</a>
+            <a href="returns.html"><i class="fas fa-undo"></i> Returns</a>
+            <div class="nav-label">Finance</div>
+            <a href="invoice-repository.html" class="active"><i class="fas fa-file-invoice"></i> Invoice Repository</a>
+            <a href="outstanding-invoices.html"><i class="fas fa-clock"></i> Outstanding (Invoice)</a>
+            <a href="outstanding-shipments.html"><i class="fas fa-clock"></i> Outstanding (Shipment)</a>
+            <a href="reconciliation.html"><i class="fas fa-balance-scale"></i> Reconciliation</a>
+            <a href="ledger.html"><i class="fas fa-book"></i> Ledger</a>
+            <div class="nav-label">Admin</div>
+            <a href="users.html"><i class="fas fa-users"></i> Users</a>
+            <a href="admin.html"><i class="fas fa-user-shield"></i> Admin</a>
+            <a href="super-admin.html"><i class="fas fa-crown"></i> Systems Admin</a>
+            <a href="system-configurations.html"><i class="fas fa-cog"></i> System Config</a>
+            <div class="nav-label">Reporting</div>
+            <a href="reports.html"><i class="fas fa-chart-bar"></i> Reports</a>
+            <a href="data.html"><i class="fas fa-database"></i> Data</a>
+            <a href="notifications.html"><i class="fas fa-bell"></i> Notifications</a>
+            <div class="nav-label">Other</div>
+            <a href="profile.html"><i class="fas fa-user-circle"></i> Profile</a>
+            <a href="sheet.html"><i class="fas fa-table"></i> Sheet</a>
+            <a href="authentication.html"><i class="fas fa-lock"></i> Authentication</a>
+            <a href="reset.html"><i class="fas fa-key"></i> Reset</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a></div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+                <h2 id="pageTitle">Invoice Repository</h2>
+            </div>
+            <div class="header-right">
+                <button class="notif-btn" id="notifIcon"><i class="fas fa-bell"></i><span class="dot" id="notifDot"></span></button>
+                <div class="user-badge"><i class="fas fa-user-circle"></i><span id="userDisplay">User</span></div>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="page-header">
+                <h2>Invoice Repository</h2>
+                <div class="actions">
+                    <button class="btn btn-primary" id="newInvoiceBtn"><i class="fas fa-plus"></i> New Invoice</button>
+                    <button class="btn btn-outline" id="refreshBtn"><i class="fas fa-sync"></i> Refresh</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>#</th><th>Supplier</th><th>Amount</th><th>Status</th><th>Date</th><th>Action</th></tr>
+                        </thead>
+                        <tbody id="invoiceTable">
+                            <tr><td colspan="6" style="text-align:center;color:var(--text-light)">No invoices</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN OVERLAY -->
+    <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
+        <div class="login-box">
+            <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
+            <div id="loginError" style="color:#e74c3c;font-size:0.85rem;margin-bottom:12px;display:none;"></div>
+            <div class="form-group"><label>Email</label><input id="loginEmail" type="email" placeholder="Enter your email" /></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="Enter your password" /></div>
+            <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+            <div class="alt">Don't have an account? <a href="#" id="goToRegister">Register</a></div>
+            <div class="alt"><a href="#" id="goToResetPass">Forgot password?</a></div>
+        </div>
+    </div>
+
+    <!-- NEW INVOICE MODAL -->
+    <div class="modal-overlay" id="modalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999;">
+        <div class="modal" style="background:#fff;border-radius:14px;max-width:900px;width:95%;max-height:90vh;overflow-y:auto;padding:28px 32px;">
+            <div class="modal-header">
+                <h3>New Invoice</h3>
+                <button class="close" id="modalClose">&times;</button>
+            </div>
+            <div id="modalBody">
+                <!-- Supplier -->
+                <div class="form-group">
+                    <label>Supplier</label>
+                    <input id="invSupplier" placeholder="Supplier name" />
+                </div>
+
+                <!-- Import area -->
+                <div class="import-area" id="importArea">
+                    <i class="fas fa-upload" style="font-size:1.5rem;display:block;margin-bottom:8px;color:var(--primary);"></i>
+                    <p style="color:var(--text-light);">Click to import CSV, Excel, or JSON</p>
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.json" />
+                </div>
+
+                <!-- Sheet grid -->
+                <div style="margin:16px 0;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <strong>Invoice Items</strong>
+                        <button class="btn btn-sm btn-primary" id="addInvoiceRowBtn"><i class="fas fa-plus"></i> Add Row</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="invoice-sheet" id="invoiceSheet">
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Item</th>
+                                    <th>Packing Qty</th>
+                                    <th>Price</th>
+                                    <th>Qty</th>
+                                    <th>Amount</th>
+                                    <th>Discount %</th>
+                                    <th>VAT %</th>
+                                    <th><i class="fas fa-trash"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoiceSheetBody"></tbody>
+                            <tfoot id="invoiceSheetFoot" class="totals-row">
+                                <tr>
+                                    <td colspan="5" style="text-align:right;">Totals</td>
+                                    <td id="invTotalAmount">0.00</td>
+                                    <td id="invTotalDiscount">0.00</td>
+                                    <td id="invTotalVat">0.00</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Status & Save -->
+                <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;">
+                    <div style="flex:1;">
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="invStatus">
+                                <option value="pending">Pending</option>
+                                <option value="paid">Paid</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="flex:1;display:flex;align-items:flex-end;">
+                        <button class="btn btn-primary" id="saveInvBtn" style="width:100%;"><i class="fas fa-save"></i> Create Invoice</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW INVOICE MODAL (printable) -->
+    <div class="modal-overlay" id="viewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:1000;">
+        <div class="modal" style="background:#fff;border-radius:14px;max-width:900px;width:95%;max-height:95vh;overflow-y:auto;padding:20px 24px;">
+            <div class="modal-header no-print">
+                <h3>Invoice Details</h3>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-primary" id="printInvoiceBtn"><i class="fas fa-print"></i> Print</button>
+                    <button class="close" id="viewModalClose">&times;</button>
+                </div>
+            </div>
+            <div id="viewModalBody">
+                <!-- Invoice content rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- State ---
+            let invoiceRows = [];
+            let rowIdCounter = 0;
+
+            // --- DOM refs ---
+            const modal = document.getElementById('modalOverlay');
+            const newBtn = document.getElementById('newInvoiceBtn');
+            const closeBtn = document.getElementById('modalClose');
+            const sheetBody = document.getElementById('invoiceSheetBody');
+            const addRowBtn = document.getElementById('addInvoiceRowBtn');
+            const saveBtn = document.getElementById('saveInvBtn');
+            const importArea = document.getElementById('importArea');
+            const fileInput = document.getElementById('fileInput');
+
+            // View modal
+            const viewModal = document.getElementById('viewModal');
+            const viewClose = document.getElementById('viewModalClose');
+            const printBtn = document.getElementById('printInvoiceBtn');
+            const viewBody = document.getElementById('viewModalBody');
+            const refreshBtn = document.getElementById('refreshBtn');
+
+            // --- Initialize auth ---
+            initAuth(() => {
+                loadInvoices();
+            });
+            attachLoginHandlers();
+
+            // --- Refresh ---
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => {
+                    showToast('Refreshing...', 'info');
+                    loadInvoices();
+                });
+            }
+
+            // --- New Invoice modal open ---
+            if (newBtn) {
+                newBtn.addEventListener('click', () => {
+                    modal.style.display = 'flex';
+                    document.getElementById('invSupplier').value = '';
+                    document.getElementById('invStatus').value = 'pending';
+                    invoiceRows = [];
+                    addInvoiceRow(); // first row
+                    renderInvoiceSheet();
+                });
+            }
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+            }
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) modal.style.display = 'none';
+                });
+            }
+
+            // --- View modal close ---
+            if (viewClose) {
+                viewClose.addEventListener('click', () => { viewModal.style.display = 'none'; });
+            }
+            if (viewModal) {
+                viewModal.addEventListener('click', (e) => {
+                    if (e.target === viewModal) viewModal.style.display = 'none';
+                });
+            }
+
+            // --- Print invoice ---
+            if (printBtn) {
+                printBtn.addEventListener('click', () => {
+                    window.print();
+                });
+            }
+
+            // --- Import file ---
+            if (importArea) {
+                importArea.addEventListener('click', () => {
+                    fileInput.click();
+                });
+            }
+            if (fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    const file = this.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    const fileName = file.name.toLowerCase();
+
+                    if (fileName.endsWith('.json')) {
+                        reader.onload = function(event) {
+                            try {
+                                const data = JSON.parse(event.target.result);
+                                if (Array.isArray(data)) {
+                                    importRows(data);
+                                } else {
+                                    showToast('JSON must be an array of rows', 'error');
+                                }
+                            } catch (err) {
+                                showToast('Invalid JSON: ' + err.message, 'error');
+                            }
+                            fileInput.value = '';
+                        };
+                        reader.readAsText(file);
+                    } else if (fileName.endsWith('.csv')) {
+                        reader.onload = function(event) {
+                            try {
+                                const text = event.target.result;
+                                const lines = text.split('\n').filter(line => line.trim());
+                                if (lines.length < 2) {
+                                    showToast('CSV must have header + data rows', 'error');
+                                    return;
+                                }
+                                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                                const rows = [];
+                                for (let i = 1; i < lines.length; i++) {
+                                    const values = lines[i].split(',').map(v => v.trim());
+                                    const row = {};
+                                    headers.forEach((h, idx) => {
+                                        row[h] = values[idx] || '';
+                                    });
+                                    rows.push(row);
+                                }
+                                importRows(rows);
+                            } catch (err) {
+                                showToast('Error parsing CSV: ' + err.message, 'error');
+                            }
+                            fileInput.value = '';
+                        };
+                        reader.readAsText(file);
+                    } else if (fileName.endsWith('.xlsx')) {
+                        reader.onload = function(event) {
+                            try {
+                                const data = new Uint8Array(event.target.result);
+                                const workbook = XLSX.read(data, { type: 'array' });
+                                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                                if (jsonData.length === 0) {
+                                    showToast('Excel file is empty', 'error');
+                                    return;
+                                }
+                                const rows = jsonData.map(row => {
+                                    const keys = Object.keys(row);
+                                    const obj = {};
+                                    keys.forEach(k => {
+                                        const lower = k.toLowerCase();
+                                        if (lower.includes('code')) obj.code = row[k];
+                                        else if (lower.includes('item')) obj.item = row[k];
+                                        else if (lower.includes('packing') || lower.includes('pack')) obj.packingQty = parseFloat(row[k]) || 0;
+                                        else if (lower.includes('price')) obj.price = parseFloat(row[k]) || 0;
+                                        else if (lower.includes('qty') || lower.includes('quantity')) obj.qty = parseFloat(row[k]) || 0;
+                                        else if (lower.includes('discount')) obj.discount = parseFloat(row[k]) || 0;
+                                        else if (lower.includes('vat') || lower.includes('tax')) obj.vat = parseFloat(row[k]) || 0;
+                                    });
+                                    return obj;
+                                });
+                                importRows(rows);
+                            } catch (err) {
+                                showToast('Error parsing Excel: ' + err.message, 'error');
+                            }
+                            fileInput.value = '';
+                        };
+                        reader.readAsArrayBuffer(file);
+                    } else {
+                        showToast('Unsupported file format. Use .csv, .xlsx, or .json', 'error');
+                        fileInput.value = '';
+                    }
+                });
+            }
+
+            // --- Import rows into sheet ---
+            function importRows(data) {
+                if (!Array.isArray(data) || data.length === 0) {
+                    showToast('No rows to import', 'error');
+                    return;
+                }
+                invoiceRows = [];
+                data.forEach((row, index) => {
+                    const item = row.item || row.Item || row.ITEM || '';
+                    if (!item) return;
+                    invoiceRows.push({
+                        id: rowIdCounter++,
+                        code: row.code || row.Code || row.CODE || '',
+                        item: item,
+                        packingQty: parseFloat(row.packingQty || row.packingqty || row.PackingQty || 0) || 0,
+                        price: parseFloat(row.price || row.Price || row.PRICE || 0) || 0,
+                        qty: parseFloat(row.qty || row.Qty || row.QTY || row.quantity || 0) || 0,
+                        discount: parseFloat(row.discount || row.Discount || row.DISCOUNT || 0) || 0,
+                        vat: parseFloat(row.vat || row.Vat || row.VAT || row.tax || 0) || 0
+                    });
+                });
+                if (invoiceRows.length === 0) {
+                    showToast('No valid rows found (missing "item" field)', 'error');
+                    return;
+                }
+                renderInvoiceSheet();
+                showToast(`Imported ${invoiceRows.length} rows!`);
+            }
+
+            // --- Add row ---
+            if (addRowBtn) {
+                addRowBtn.addEventListener('click', addInvoiceRow);
+            }
+
+            function addInvoiceRow() {
+                invoiceRows.push({
+                    id: rowIdCounter++,
+                    code: '',
+                    item: '',
+                    packingQty: 0,
+                    price: 0,
+                    qty: 0,
+                    discount: 0,
+                    vat: 0
+                });
+                renderInvoiceSheet();
+            }
+
+            // --- Render sheet ---
+            function renderInvoiceSheet() {
+                if (!sheetBody) return;
+                if (invoiceRows.length === 0) {
+                    sheetBody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-light);padding:16px;">No items. Click "Add Row" or import a file.</td></tr>`;
+                    updateInvoiceTotals();
+                    return;
+                }
+
+                let html = '';
+                invoiceRows.forEach((row, index) => {
+                    const amount = (row.qty || 0) * (row.price || 0);
+                    const discount = amount * ((row.discount || 0) / 100);
+                    const vat = (amount - discount) * ((row.vat || 0) / 100);
+                    const total = amount - discount + vat;
+
+                    html += `
+                        <tr data-index="${index}">
+                            <td><input type="text" class="row-code" value="${row.code || ''}" placeholder="Code" /></td>
+                            <td><input type="text" class="row-item" value="${row.item || ''}" placeholder="Item" /></td>
+                            <td><input type="number" class="row-packing" value="${row.packingQty || 0}" step="1" min="0" /></td>
+                            <td><input type="number" class="row-price" value="${row.price || 0}" step="0.01" min="0" /></td>
+                            <td><input type="number" class="row-qty" value="${row.qty || 0}" step="1" min="0" /></td>
+                            <td class="row-amount">${formatCurrency(total)}</td>
+                            <td><input type="number" class="row-discount" value="${row.discount || 0}" step="0.1" min="0" max="100" /></td>
+                            <td><input type="number" class="row-vat" value="${row.vat || 0}" step="0.1" min="0" max="100" /></td>
+                            <td><button class="remove-row-btn" onclick="removeInvoiceRow(${index})"><i class="fas fa-trash"></i></button></td>
+                        </tr>
+                    `;
+                });
+                sheetBody.innerHTML = html;
+
+                // Attach input events
+                sheetBody.querySelectorAll('input').forEach(input => {
+                    input.addEventListener('input', function(e) {
+                        const tr = this.closest('tr');
+                        if (!tr) return;
+                        const index = parseInt(tr.dataset.index);
+                        const row = invoiceRows[index];
+                        if (!row) return;
+
+                        row.code = tr.querySelector('.row-code').value;
+                        row.item = tr.querySelector('.row-item').value;
+                        row.packingQty = parseFloat(tr.querySelector('.row-packing').value) || 0;
+                        row.price = parseFloat(tr.querySelector('.row-price').value) || 0;
+                        row.qty = parseFloat(tr.querySelector('.row-qty').value) || 0;
+                        row.discount = parseFloat(tr.querySelector('.row-discount').value) || 0;
+                        row.vat = parseFloat(tr.querySelector('.row-vat').value) || 0;
+
+                        const amount = row.qty * row.price;
+                        const discountAmt = amount * (row.discount / 100);
+                        const vatAmt = (amount - discountAmt) * (row.vat / 100);
+                        const total = amount - discountAmt + vatAmt;
+                        tr.querySelector('.row-amount').textContent = formatCurrency(total);
+
+                        updateInvoiceTotals();
+                    });
+                });
+
+                updateInvoiceTotals();
+            }
+
+            // --- Remove row (global) ---
+            window.removeInvoiceRow = function(index) {
+                if (invoiceRows.length <= 1) {
+                    showToast('At least one row is required', 'error');
+                    return;
+                }
+                invoiceRows.splice(index, 1);
+                renderInvoiceSheet();
+            };
+
+            // --- Update totals ---
+            function updateInvoiceTotals() {
+                let totalAmt = 0, totalDisc = 0, totalVat = 0;
+                invoiceRows.forEach(row => {
+                    const amount = row.qty * row.price;
+                    const discount = amount * (row.discount / 100);
+                    const vat = (amount - discount) * (row.vat / 100);
+                    totalAmt += amount;
+                    totalDisc += discount;
+                    totalVat += vat;
+                });
+                const totalEl = document.getElementById('invTotalAmount');
+                const discEl = document.getElementById('invTotalDiscount');
+                const vatEl = document.getElementById('invTotalVat');
+                if (totalEl) totalEl.textContent = formatCurrency(totalAmt);
+                if (discEl) discEl.textContent = formatCurrency(totalDisc);
+                if (vatEl) vatEl.textContent = formatCurrency(totalVat);
+            }
+
+            // --- Save invoice ---
+            if (saveBtn) {
+                saveBtn.addEventListener('click', async () => {
+                    const supplier = document.getElementById('invSupplier').value.trim();
+                    if (!supplier) {
+                        showToast('Supplier is required', 'error');
+                        return;
+                    }
+                    if (invoiceRows.length === 0) {
+                        showToast('Add at least one item', 'error');
+                        return;
+                    }
+                    let hasError = false;
+                    invoiceRows.forEach(row => {
+                        if (!row.item.trim()) {
+                            showToast('Item name is required for all rows', 'error');
+                            hasError = true;
+                            return;
+                        }
+                        if ((row.qty || 0) <= 0) {
+                            showToast('Quantity must be greater than 0', 'error');
+                            hasError = true;
+                            return;
+                        }
+                    });
+                    if (hasError) return;
+
+                    let subtotal = 0, totalDiscount = 0, totalVat = 0;
+                    invoiceRows.forEach(row => {
+                        const amount = row.qty * row.price;
+                        const discount = amount * (row.discount / 100);
+                        const vat = (amount - discount) * (row.vat / 100);
+                        subtotal += amount;
+                        totalDiscount += discount;
+                        totalVat += vat;
+                    });
+                    const grandTotal = subtotal - totalDiscount + totalVat;
+                    const status = document.getElementById('invStatus').value;
+
+                    try {
+                        await db.collection('invoices').add({
+                            supplier: supplier,
+                            items: invoiceRows.map(row => ({
+                                code: row.code || '',
+                                item: row.item || '',
+                                packingQty: row.packingQty || 0,
+                                price: row.price || 0,
+                                qty: row.qty || 0,
+                                discount: row.discount || 0,
+                                vat: row.vat || 0
+                            })),
+                            subtotal: subtotal,
+                            totalDiscount: totalDiscount,
+                            totalVat: totalVat,
+                            amount: grandTotal,
+                            status: status,
+                            createdBy: currentUser?.uid || 'system',
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        showToast('Invoice created!');
+                        modal.style.display = 'none';
+                        loadInvoices();
+                    } catch (e) {
+                        showToast(e.message, 'error');
+                    }
+                });
+            }
+
+            // --- Load invoices ---
+            async function loadInvoices() {
+                try {
+                    const snap = await db.collection('invoices').orderBy('createdAt', 'desc').get();
+                    const tbody = document.getElementById('invoiceTable');
+                    if (!tbody) return;
+
+                    if (snap.empty) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light)">No invoices</td></tr>';
+                        return;
+                    }
+
+                    let html = '';
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        const statusClass = d.status === 'paid' ? 'badge-success' :
+                                          d.status === 'pending' ? 'badge-warning' : 'badge-info';
+                        html += `
+                            <tr>
+                                <td>${doc.id.slice(0,6)}</td>
+                                <td>${d.supplier || '—'}</td>
+                                <td>${formatCurrency(d.amount || 0)}</td>
+                                <td><span class="badge ${statusClass}">${d.status || 'pending'}</span></td>
+                                <td>${d.createdAt?.toDate?.()?.toLocaleDateString() || '—'}</td>
+                                <td>
+                                    <div class="action-btn-group">
+                                        <button class="btn btn-sm btn-outline" onclick="viewInvoice('${doc.id}')"><i class="fas fa-eye"></i></button>
+                                        ${d.status === 'pending' ? `<button class="btn btn-sm btn-success" onclick="markPaid('${doc.id}')"><i class="fas fa-check"></i></button>` : ''}
+                                        <div class="export-dropdown">
+                                            <button class="btn btn-sm btn-outline"><i class="fas fa-download"></i></button>
+                                            <div class="export-dropdown-content">
+                                                <button onclick="exportInvoice('${doc.id}','excel')"><i class="fas fa-file-excel"></i> Excel</button>
+                                                <button onclick="exportInvoice('${doc.id}','csv')"><i class="fas fa-file-csv"></i> CSV</button>
+                                                <button onclick="exportInvoice('${doc.id}','json')"><i class="fas fa-file-code"></i> JSON</button>
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteInvoice('${doc.id}')"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+
+                    // ---- View Invoice (printable) ----
+                    window.viewInvoice = async (id) => {
+                        try {
+                            const doc = await db.collection('invoices').doc(id).get();
+                            if (!doc.exists) return showToast('Not found', 'error');
+                            const d = doc.data();
+
+                            let itemsHtml = '';
+                            if (d.items && Array.isArray(d.items)) {
+                                d.items.forEach((item, idx) => {
+                                    const amount = (item.qty || 0) * (item.price || 0);
+                                    const discount = amount * ((item.discount || 0) / 100);
+                                    const vat = (amount - discount) * ((item.vat || 0) / 100);
+                                    const total = amount - discount + vat;
+                                    itemsHtml += `
+                                        <tr>
+                                            <td>${item.code || ''}</td>
+                                            <td>${item.item || '—'}</td>
+                                            <td style="text-align:center;">${item.packingQty || 0}</td>
+                                            <td style="text-align:right;">${formatCurrency(item.price || 0)}</td>
+                                            <td style="text-align:center;">${item.qty || 0}</td>
+                                            <td style="text-align:right;">${formatCurrency(amount)}</td>
+                                            <td style="text-align:center;">${item.discount || 0}%</td>
+                                            <td style="text-align:center;">${item.vat || 0}%</td>
+                                            <td style="text-align:right;">${formatCurrency(total)}</td>
+                                        </tr>
+                                    `;
+                                });
+                            }
+
+                            const statusBadge = d.status === 'paid' ? 'badge-success' : 'badge-warning';
+                            const viewHtml = `
+                                <div class="print-invoice" id="printArea">
+                                    <div class="header">
+                                        <h2><i class="fas fa-pills"></i> Drugs n' More</h2>
+                                        <div style="text-align:right;">
+                                            <div style="font-weight:600;">INVOICE</div>
+                                            <div style="font-size:0.8rem;color:var(--text-light);">#${id.slice(0,8).toUpperCase()}</div>
+                                        </div>
+                                    </div>
+                                    <div class="invoice-details">
+                                        <div>
+                                            <strong>Supplier:</strong> ${d.supplier || '—'}<br />
+                                            <strong>Date:</strong> ${d.createdAt?.toDate?.()?.toLocaleString() || '—'}<br />
+                                            <strong>Status:</strong> <span class="badge ${statusBadge}">${d.status || 'pending'}</span>
+                                        </div>
+                                        <div style="text-align:right;">
+                                            <strong>Invoice #:</strong> ${id.slice(0,8).toUpperCase()}<br />
+                                            <strong>Created by:</strong> ${d.createdBy || 'system'}
+                                        </div>
+                                    </div>
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Code</th>
+                                                <th>Item</th>
+                                                <th style="text-align:center;">Pkg</th>
+                                                <th style="text-align:right;">Price</th>
+                                                <th style="text-align:center;">Qty</th>
+                                                <th style="text-align:right;">Amount</th>
+                                                <th style="text-align:center;">Disc %</th>
+                                                <th style="text-align:center;">VAT %</th>
+                                                <th style="text-align:right;">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${itemsHtml || '<tr><td colspan="9" style="text-align:center;">No items</td></tr>'}
+                                        </tbody>
+                                    </table>
+                                    <div class="totals">
+                                        <div>Subtotal: ${formatCurrency(d.subtotal || 0)}</div>
+                                        <div>Total Discount: -${formatCurrency(d.totalDiscount || 0)}</div>
+                                        <div>VAT: ${formatCurrency(d.totalVat || 0)}</div>
+                                        <div style="font-size:1.2rem;color:var(--primary);">Grand Total: ${formatCurrency(d.amount || 0)}</div>
+                                    </div>
+                                </div>
+                            `;
+                            viewBody.innerHTML = viewHtml;
+                            viewModal.style.display = 'flex';
+
+                            if (printBtn) {
+                                printBtn.onclick = function() {
+                                    window.print();
+                                };
+                            }
+                        } catch (e) {
+                            showToast(e.message, 'error');
+                        }
+                    };
+
+                    // ---- Mark Paid ----
+                    window.markPaid = async (id) => {
+                        if (!confirm('Mark this invoice as paid?')) return;
+                        try {
+                            await db.collection('invoices').doc(id).update({
+                                status: 'paid',
+                                paidAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            showToast('Invoice marked as paid');
+                            loadInvoices();
+                            if (window.loadOutstandingInvoices) window.loadOutstandingInvoices();
+                        } catch (e) {
+                            showToast(e.message, 'error');
+                        }
+                    };
+
+                    // ---- Delete Invoice ----
+                    window.deleteInvoice = async (id) => {
+                        if (!confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) return;
+                        try {
+                            await db.collection('invoices').doc(id).delete();
+                            showToast('Invoice deleted successfully', 'success');
+                            loadInvoices();
+                        } catch (e) {
+                            showToast('Error deleting invoice: ' + e.message, 'error');
+                        }
+                    };
+
+                    // ---- Export Invoice (Excel, CSV, JSON) ----
+                    window.exportInvoice = async (id, format) => {
+                        try {
+                            const doc = await db.collection('invoices').doc(id).get();
+                            if (!doc.exists) return showToast('Invoice not found', 'error');
+                            const d = doc.data();
+
+                            // Build data array (flatten items)
+                            const rows = [];
+                            if (d.items && Array.isArray(d.items)) {
+                                d.items.forEach((item, idx) => {
+                                    const amount = (item.qty || 0) * (item.price || 0);
+                                    const discount = amount * ((item.discount || 0) / 100);
+                                    const vat = (amount - discount) * ((item.vat || 0) / 100);
+                                    const total = amount - discount + vat;
+                                    rows.push({
+                                        'Item #': idx + 1,
+                                        'Code': item.code || '',
+                                        'Item': item.item || '',
+                                        'Packing Qty': item.packingQty || 0,
+                                        'Price': item.price || 0,
+                                        'Qty': item.qty || 0,
+                                        'Amount': amount,
+                                        'Discount %': item.discount || 0,
+                                        'VAT %': item.vat || 0,
+                                        'Total': total
+                                    });
+                                });
+                            } else {
+                                rows.push({ 'Item': 'No items', 'Qty': 0, 'Price': 0, 'Total': 0 });
+                            }
+
+                            // Add summary row
+                            rows.push({
+                                'Item #': '',
+                                'Code': '',
+                                'Item': 'SUBTOTAL',
+                                'Packing Qty': '',
+                                'Price': '',
+                                'Qty': '',
+                                'Amount': d.subtotal || 0,
+                                'Discount %': '',
+                                'VAT %': '',
+                                'Total': d.amount || 0
+                            });
+
+                            // Add extra metadata at the end
+                            const metaRows = [
+                                { 'Item': 'SUPPLIER', 'Item #': d.supplier || '' },
+                                { 'Item': 'STATUS', 'Item #': d.status || '' },
+                                { 'Item': 'DATE', 'Item #': d.createdAt?.toDate?.()?.toLocaleString() || '' },
+                                { 'Item': 'INVOICE #', 'Item #': id.slice(0,8).toUpperCase() }
+                            ];
+                            metaRows.forEach(m => rows.push(m));
+
+                            const filename = `invoice_${id.slice(0,8)}_${new Date().toISOString().slice(0,10)}`;
+
+                            if (format === 'json') {
+                                // Export as JSON
+                                const jsonData = {
+                                    id: id,
+                                    supplier: d.supplier,
+                                    status: d.status,
+                                    date: d.createdAt?.toDate?.()?.toISOString(),
+                                    subtotal: d.subtotal,
+                                    totalDiscount: d.totalDiscount,
+                                    totalVat: d.totalVat,
+                                    amount: d.amount,
+                                    items: d.items || []
+                                };
+                                const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = filename + '.json';
+                                a.click();
+                                URL.revokeObjectURL(url);
+                                showToast('JSON exported', 'success');
+                            } else if (format === 'csv') {
+                                // Export as CSV
+                                const csvRows = [];
+                                const headers = Object.keys(rows[0]);
+                                csvRows.push(headers.join(','));
+                                rows.forEach(row => {
+                                    const values = headers.map(header => {
+                                        const val = row[header] || '';
+                                        return typeof val === 'string' && val.includes(',') ? `"${val}"` : val;
+                                    });
+                                    csvRows.push(values.join(','));
+                                });
+                                const csvContent = csvRows.join('\n');
+                                const blob = new Blob([csvContent], { type: 'text/csv' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = filename + '.csv';
+                                a.click();
+                                URL.revokeObjectURL(url);
+                                showToast('CSV exported', 'success');
+                            } else if (format === 'excel') {
+                                // Export as Excel using SheetJS
+                                const wb = XLSX.utils.book_new();
+                                const ws = XLSX.utils.json_to_sheet(rows);
+                                XLSX.utils.book_append_sheet(wb, ws, 'Invoice');
+                                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                                const blob = new Blob([wbout], { type: 'application/octet-stream' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = filename + '.xlsx';
+                                a.click();
+                                URL.revokeObjectURL(url);
+                                showToast('Excel exported', 'success');
+                            }
+                        } catch (e) {
+                            showToast('Export error: ' + e.message, 'error');
+                        }
+                    };
+
+                } catch (e) {
+                    console.warn('Error loading invoices:', e);
+                    const tbody = document.getElementById('invoiceTable');
+                    if (tbody) {
+                        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#e74c3c;">Error loading invoices: ${e.message}</td></tr>`;
+                    }
+                }
+            }
+
+            window.loadInvoices = loadInvoices;
+        });
+    </script>
+</body>
+</html>
