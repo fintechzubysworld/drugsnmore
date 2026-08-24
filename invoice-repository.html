@@ -11,7 +11,6 @@
     <link rel="stylesheet" href="common.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <style>
-        /* same styles as before */
         .invoice-sheet input[type="text"],
         .invoice-sheet input[type="number"] {
             width: 100%;
@@ -191,7 +190,7 @@
 <body>
     <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
 
-    <!-- SIDEBAR (same as before, omitted for brevity but include full) -->
+    <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
         <nav class="sidebar-nav">
@@ -249,6 +248,7 @@
                 <div class="actions">
                     <button class="btn btn-primary" id="newInvoiceBtn"><i class="fas fa-plus"></i> New Invoice</button>
                     <button class="btn btn-outline" id="refreshBtn"><i class="fas fa-sync"></i> Refresh</button>
+                    <button class="btn btn-outline" onclick="location.href='ledger.html'"><i class="fas fa-book"></i> View Ledger</button>
                 </div>
             </div>
 
@@ -267,7 +267,7 @@
         </div>
     </div>
 
-    <!-- LOGIN OVERLAY (same as before) -->
+    <!-- LOGIN OVERLAY -->
     <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
         <div class="login-box">
             <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
@@ -280,7 +280,7 @@
         </div>
     </div>
 
-    <!-- NEW INVOICE MODAL (same as before) -->
+    <!-- NEW INVOICE MODAL -->
     <div class="modal-overlay" id="modalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999;">
         <div class="modal" style="background:#fff;border-radius:14px;max-width:900px;width:95%;max-height:90vh;overflow-y:auto;padding:28px 32px;">
             <div class="modal-header"><h3>New Invoice</h3><button class="close" id="modalClose">&times;</button></div>
@@ -349,7 +349,7 @@
             // --- State ---
             let invoiceRows = [];
             let rowIdCounter = 0;
-            let confirmInvoiceId = null; // store the invoice being confirmed
+            let confirmInvoiceId = null;
 
             // --- DOM refs ---
             const modal = document.getElementById('modalOverlay');
@@ -431,7 +431,7 @@
                 });
             }
 
-            // --- Import file (same as before) ---
+            // --- Import file ---
             if (importArea) {
                 importArea.addEventListener('click', () => {
                     fileInput.click();
@@ -736,6 +736,42 @@
                 });
             }
 
+            // --- LEDGER HELPER ---
+            async function addLedgerEntry(invoiceId, shortId, supplier, amount, entryType, description) {
+                // entryType: 'receivable' or 'payment'
+                try {
+                    const creatorName = currentUser?.displayName || currentUser?.email || 'System';
+                    let debit = 0, credit = 0;
+                    let desc = '';
+                    
+                    if (entryType === 'receivable') {
+                        debit = amount;
+                        credit = 0;
+                        desc = `Invoice #${shortId} - ${supplier} - Accounts Receivable (${description})`;
+                    } else if (entryType === 'payment') {
+                        debit = 0;
+                        credit = amount;
+                        desc = `Invoice #${shortId} - ${supplier} - Payment received (${description})`;
+                    }
+
+                    await db.collection('ledger').add({
+                        invoiceId: invoiceId,
+                        description: desc,
+                        debit: debit,
+                        credit: credit,
+                        date: firebase.firestore.FieldValue.serverTimestamp(),
+                        createdBy: creatorName,
+                        entryType: entryType,
+                        supplier: supplier,
+                        reference: `INV-${shortId}`
+                    });
+                    console.log('Ledger entry added:', desc);
+                } catch (e) {
+                    console.error('Error adding ledger entry:', e);
+                    // Don't block the main flow if ledger fails
+                }
+            }
+
             // --- Confirm Invoice ---
             async function confirmInvoice(invoiceId, referenceNumber) {
                 try {
@@ -746,6 +782,10 @@
                     if (data.confirmed) return showToast('Invoice already confirmed', 'error');
                     if (data.createdByUid === currentUser.uid) return showToast('You cannot confirm your own invoice', 'error');
 
+                    const shortId = invoiceId.slice(0,6);
+                    const supplier = data.supplier || 'Unknown';
+                    const amount = data.amount || 0;
+
                     // Update invoice
                     await invoiceRef.update({
                         confirmed: true,
@@ -753,6 +793,9 @@
                         confirmedAt: firebase.firestore.FieldValue.serverTimestamp(),
                         referenceNumber: referenceNumber
                     });
+
+                    // --- Add ledger entry: Accounts Receivable ---
+                    await addLedgerEntry(invoiceId, shortId, supplier, amount, 'receivable', `Confirmed by ${currentUser?.displayName || currentUser?.email || 'System'}`);
 
                     // Move items to warehouse
                     const items = data.items || [];
@@ -780,15 +823,19 @@
                 }
             }
 
-            // ---- Mark Paid ----
+            // ---- Mark Paid and Move to Shelf ----
             async function markPaidAndMoveToShelf(invoiceId) {
-                if (!confirm('Mark this invoice as paid? This will move items from warehouse to pharmacy shelf.')) return;
+                if (!confirm('Mark this invoice as paid? This will move items from warehouse to pharmacy shelf and record in ledger.')) return;
                 try {
                     const invoiceRef = db.collection('invoices').doc(invoiceId);
                     const doc = await invoiceRef.get();
                     if (!doc.exists) return showToast('Invoice not found', 'error');
                     const data = doc.data();
                     if (!data.confirmed) return showToast('Invoice must be confirmed before marking paid', 'error');
+
+                    const shortId = invoiceId.slice(0,6);
+                    const supplier = data.supplier || 'Unknown';
+                    const amount = data.amount || 0;
 
                     // Move items from warehouse to shelf
                     const whSnap = await db.collection('warehouse')
@@ -800,7 +847,6 @@
                         const batch = db.batch();
                         whSnap.forEach(whDoc => {
                             const whData = whDoc.data();
-                            // Create shelf entry
                             const shelfRef = db.collection('shelf').doc();
                             batch.set(shelfRef, {
                                 code: whData.code || 'SH-' + invoiceId.slice(0,6),
@@ -811,17 +857,20 @@
                                 sourceInvoice: invoiceId,
                                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
                             });
-                            // Delete warehouse entry
                             batch.delete(whDoc.ref);
                         });
                         await batch.commit();
                     }
 
+                    // --- Add ledger entry: Payment received ---
+                    await addLedgerEntry(invoiceId, shortId, supplier, amount, 'payment', `Paid by ${currentUser?.displayName || currentUser?.email || 'System'}`);
+
                     // Update invoice status to paid
                     await invoiceRef.update({
                         status: 'paid',
                         paidAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        paidBy: currentUser?.displayName || currentUser?.email || 'System'
                     });
 
                     showToast('Invoice marked as paid and items moved to pharmacy shelf!');
@@ -975,7 +1024,7 @@
                         }
                     };
 
-                    // ---- Mark Paid (overwrite with new function) ----
+                    // ---- Mark Paid ----
                     window.markPaidAndMoveToShelf = markPaidAndMoveToShelf;
 
                     // ---- Open Confirm Modal ----
