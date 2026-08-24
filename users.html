@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Users · Drugs n' More</title>
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -77,10 +78,10 @@
                 <div class="table-wrap">
                     <table>
                         <thead>
-                            <tr><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr>
+                            <tr><th>Email</th><th>Display Name</th><th>Role</th><th>Status</th><th>Action</th></tr>
                         </thead>
                         <tbody id="usersTable">
-                            <tr><td colspan="4" style="text-align:center;color:var(--text-light)">No users</td></tr>
+                            <tr><td colspan="5" style="text-align:center;color:var(--text-light)">No users</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -102,13 +103,13 @@
     </div>
 
     <!-- MODAL for Add User -->
-    <div class="modal-overlay" id="modalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999;">
+    <div class="modal-overlay" id="addModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999;">
         <div class="modal" style="background:#fff;border-radius:14px;max-width:640px;width:94%;max-height:90vh;overflow-y:auto;padding:28px 32px;">
             <div class="modal-header">
                 <h3>Add User</h3>
-                <button class="close" id="modalClose">&times;</button>
+                <button class="close" id="addModalClose">&times;</button>
             </div>
-            <div id="modalBody">
+            <div id="addModalBody">
                 <div class="form-group"><label>Email</label><input id="newUserEmail" type="email" placeholder="user@example.com" /></div>
                 <div class="form-group"><label>Password</label><input id="newUserPass" type="password" placeholder="••••••••" /></div>
                 <div class="form-group"><label>Role</label>
@@ -117,19 +118,34 @@
                         <option value="admin">Admin</option>
                     </select>
                 </div>
-
-                <!-- Admin password field – required to stay logged in -->
                 <div class="form-group" style="margin-top:16px;border-top:1px solid #eef1f5;padding-top:16px;">
-                    <label style="color:var(--primary);">
-                        <i class="fas fa-shield-alt"></i> Your Admin Password
-                    </label>
+                    <label style="color:var(--primary);"><i class="fas fa-shield-alt"></i> Your Admin Password</label>
                     <input id="adminPasswordForCreation" type="password" placeholder="Enter your password to create user" />
-                    <span style="font-size:0.75rem;color:var(--text-light);">
-                        We need your password to keep you logged in after creating the new user.
-                    </span>
+                    <span style="font-size:0.75rem;color:var(--text-light);">We need your password to keep you logged in.</span>
                 </div>
-
                 <button class="btn btn-primary" id="saveUserBtn" style="margin-top:12px;"><i class="fas fa-user-plus"></i> Create User</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL for Edit User -->
+    <div class="modal-overlay" id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999;">
+        <div class="modal" style="background:#fff;border-radius:14px;max-width:640px;width:94%;max-height:90vh;overflow-y:auto;padding:28px 32px;">
+            <div class="modal-header">
+                <h3>Edit User</h3>
+                <button class="close" id="editModalClose">&times;</button>
+            </div>
+            <div id="editModalBody">
+                <div class="form-group"><label>Email</label><input id="editUserEmail" type="email" disabled style="background:#f8fafc;" /></div>
+                <div class="form-group"><label>Display Name</label><input id="editDisplayName" placeholder="User display name" /></div>
+                <div class="form-group"><label>Role</label>
+                    <select id="editUserRole">
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                        <!-- superadmin can only be set via super-admin page -->
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="saveEditBtn"><i class="fas fa-save"></i> Update User</button>
             </div>
         </div>
     </div>
@@ -143,144 +159,166 @@
             });
             attachLoginHandlers();
 
-            // Modal elements
-            const modal = document.getElementById('modalOverlay');
-            const newBtn = document.getElementById('newUserBtn');
-            const closeBtn = document.getElementById('modalClose');
+            // ----- Add User Modal -----
+            const addModal = document.getElementById('addModal');
+            const addClose = document.getElementById('addModalClose');
+            const newUserBtn = document.getElementById('newUserBtn');
 
-            // Open modal
-            if (newBtn) {
-                newBtn.addEventListener('click', () => {
-                    // Check if user is admin or super admin
-                    if (currentUserRole !== 'superadmin' && currentUserRole !== 'admin') {
-                        showToast('Only admins can add users', 'error');
-                        return;
-                    }
-                    modal.style.display = 'flex';
-                    // Clear fields
-                    document.getElementById('newUserEmail').value = '';
-                    document.getElementById('newUserPass').value = '';
-                    document.getElementById('adminPasswordForCreation').value = '';
-                    document.getElementById('newUserRole').value = 'user';
-                });
-            }
+            newUserBtn.addEventListener('click', () => {
+                if (currentUserRole !== 'superadmin' && currentUserRole !== 'admin') {
+                    showToast('Only admins can add users', 'error');
+                    return;
+                }
+                addModal.style.display = 'flex';
+                document.getElementById('newUserEmail').value = '';
+                document.getElementById('newUserPass').value = '';
+                document.getElementById('adminPasswordForCreation').value = '';
+                document.getElementById('newUserRole').value = 'user';
+            });
 
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => {
-                    modal.style.display = 'none';
-                });
-            }
+            addClose.addEventListener('click', () => { addModal.style.display = 'none'; });
+            addModal.addEventListener('click', (e) => { if (e.target === addModal) addModal.style.display = 'none'; });
 
-            if (modal) {
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) modal.style.display = 'none';
-                });
-            }
-
-            // Save user button
+            // Save new user
             document.getElementById('saveUserBtn').addEventListener('click', async () => {
                 const email = document.getElementById('newUserEmail').value.trim();
                 const pass = document.getElementById('newUserPass').value;
                 const role = document.getElementById('newUserRole').value;
                 const adminPass = document.getElementById('adminPasswordForCreation').value;
 
-                // Validate fields
-                if (!email || !pass) {
-                    showToast('Please fill in email and password', 'error');
-                    return;
-                }
-                if (!adminPass) {
-                    showToast('Please enter your admin password to create a user', 'error');
-                    return;
-                }
-
-                // Store current admin email
+                if (!email || !pass) { showToast('Please fill in email and password', 'error'); return; }
+                if (!adminPass) { showToast('Please enter your admin password', 'error'); return; }
                 const adminEmail = currentUser.email;
 
                 try {
-                    // 1. Create the new user
                     const cred = await auth.createUserWithEmailAndPassword(email, pass);
-                    
-                    // 2. Store the new user's info in Firestore
                     await db.collection('users').doc(cred.user.uid).set({
                         email: email,
                         role: role,
-                        displayName: email,
+                        displayName: email.split('@')[0], // default display name
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-
-                    // 3. Sign out the newly created user and sign back in as the original admin
                     await auth.signOut();
                     await auth.signInWithEmailAndPassword(adminEmail, adminPass);
-
-                    showToast('User created successfully! You are still logged in as admin.', 'success');
-                    modal.style.display = 'none';
-                    
-                    // Clear fields
-                    document.getElementById('newUserEmail').value = '';
-                    document.getElementById('newUserPass').value = '';
-                    document.getElementById('adminPasswordForCreation').value = '';
-                    
-                    // Refresh the user list
+                    showToast('User created successfully!', 'success');
+                    addModal.style.display = 'none';
                     loadUsers();
-                    
                 } catch (e) {
-                    console.error('Error creating user:', e);
-                    
-                    // Handle specific error cases
-                    if (e.code === 'auth/wrong-password') {
-                        showToast('Incorrect admin password. Please try again.', 'error');
-                    } else if (e.code === 'auth/email-already-in-use') {
-                        showToast('This email is already registered.', 'error');
-                    } else if (e.code === 'auth/weak-password') {
-                        showToast('Password should be at least 6 characters.', 'error');
-                    } else {
-                        showToast(e.message, 'error');
-                    }
-                    
-                    // If error occurred, we might be signed out; auth state will handle re-login
+                    if (e.code === 'auth/wrong-password') showToast('Incorrect admin password.', 'error');
+                    else showToast(e.message, 'error');
                 }
             });
 
-            // Load users list
+            // ----- Edit User Modal -----
+            const editModal = document.getElementById('editModal');
+            const editClose = document.getElementById('editModalClose');
+            let editingUserId = null;
+
+            editClose.addEventListener('click', () => { editModal.style.display = 'none'; });
+            editModal.addEventListener('click', (e) => { if (e.target === editModal) editModal.style.display = 'none'; });
+
+            // Save edit
+            document.getElementById('saveEditBtn').addEventListener('click', async () => {
+                const displayName = document.getElementById('editDisplayName').value.trim();
+                const role = document.getElementById('editUserRole').value;
+                if (!editingUserId) return;
+
+                try {
+                    await db.collection('users').doc(editingUserId).update({
+                        displayName: displayName || 'User',
+                        role: role,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    showToast('User updated successfully!', 'success');
+                    editModal.style.display = 'none';
+                    loadUsers();
+                } catch (e) {
+                    showToast(e.message, 'error');
+                }
+            });
+
+            // ----- Load Users -----
             async function loadUsers() {
                 try {
                     const snap = await db.collection('users').get();
                     const tbody = document.getElementById('usersTable');
-                    
                     if (snap.empty) {
-                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No users</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light)">No users</td></tr>';
                         return;
                     }
-                    
+
                     let html = '';
                     snap.forEach(doc => {
                         const d = doc.data();
                         const role = d.role || 'user';
                         const isSuper = role === 'superadmin';
                         const isAdmin = role === 'admin';
-                        
-                        // Show delete button only for super admin
-                        const canDelete = currentUserRole === 'superadmin' && !isSuper;
-                        
+                        const isSelf = doc.id === currentUser?.uid;
+
+                        // Permissions:
+                        // - Superadmin can delete/edit any user except themselves (maybe allow?)
+                        // - Admin can delete/edit non-admin, non-superadmin users
+                        let canEdit = false;
+                        let canDelete = false;
+                        let canReset = false;
+
+                        if (currentUserRole === 'superadmin') {
+                            canEdit = true;
+                            canDelete = true;
+                            canReset = true;
+                        } else if (currentUserRole === 'admin') {
+                            if (!isSuper && !isAdmin) {
+                                canEdit = true;
+                                canDelete = true;
+                                canReset = true;
+                            }
+                        }
+
+                        const roleDisplay = isSuper ? '<span class="super-badge">Super Admin</span>' :
+                                            isAdmin ? '<span class="admin-badge">Admin</span>' :
+                                            '<span class="chip">User</span>';
+
                         html += `
                             <tr>
                                 <td>${d.email || '—'}</td>
-                                <td>
-                                    ${isSuper ? '<span class="super-badge">Super Admin</span>' : 
-                                      isAdmin ? '<span class="admin-badge">Admin</span>' : 
-                                      '<span class="chip">User</span>'}
-                                </td>
+                                <td>${d.displayName || '—'}</td>
+                                <td>${roleDisplay}</td>
                                 <td><span class="badge badge-success">active</span></td>
                                 <td>
-                                    ${canDelete ? `<button class="btn btn-sm btn-danger" onclick="deleteUser('${doc.id}')"><i class="fas fa-trash"></i></button>` : '—'}
+                                    ${canEdit ? `<button class="btn btn-sm btn-primary" onclick="editUser('${doc.id}')"><i class="fas fa-edit"></i></button>` : ''}
+                                    ${canReset ? `<button class="btn btn-sm btn-warning" onclick="resetPassword('${d.email}')"><i class="fas fa-key"></i></button>` : ''}
+                                    ${canDelete ? `<button class="btn btn-sm btn-danger" onclick="deleteUser('${doc.id}')"><i class="fas fa-trash"></i></button>` : ''}
                                 </td>
                             </tr>
                         `;
                     });
                     tbody.innerHTML = html;
-                    
-                    // Delete function (global)
+
+                    // Global functions
+                    window.editUser = async (userId) => {
+                        if (!userId) return;
+                        try {
+                            const doc = await db.collection('users').doc(userId).get();
+                            if (!doc.exists) return showToast('User not found', 'error');
+                            const d = doc.data();
+                            editingUserId = userId;
+                            document.getElementById('editUserEmail').value = d.email || '';
+                            document.getElementById('editDisplayName').value = d.displayName || '';
+                            document.getElementById('editUserRole').value = d.role || 'user';
+                            editModal.style.display = 'flex';
+                        } catch (e) {
+                            showToast(e.message, 'error');
+                        }
+                    };
+
+                    window.resetPassword = (email) => {
+                        if (!email) return;
+                        if (!confirm(`Send password reset email to ${email}?`)) return;
+                        auth.sendPasswordResetEmail(email)
+                            .then(() => showToast(`Reset email sent to ${email}`))
+                            .catch(e => showToast(e.message, 'error'));
+                    };
+
                     window.deleteUser = async (id) => {
                         if (!confirm('Delete this user?')) return;
                         try {
@@ -291,18 +329,15 @@
                             showToast(e.message, 'error');
                         }
                     };
-                    
+
                 } catch (e) {
                     console.warn('Error loading users:', e);
                     document.getElementById('usersTable').innerHTML = `
-                        <tr><td colspan="4" style="text-align:center;color:#e74c3c;">
-                            Error loading users: ${e.message}
-                        </td></tr>
+                        <tr><td colspan="5" style="text-align:center;color:#e74c3c;">Error loading users: ${e.message}</td></tr>
                     `;
                 }
             }
 
-            // Expose loadUsers globally
             window.loadUsers = loadUsers;
         });
     </script>
