@@ -14,9 +14,8 @@
 <body>
     <div id="toast" class="toast"><i></i><span id="toastMsg"></span></div>
 
-    <!-- SIDEBAR (same as before) -->
+    <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
-        <!-- ... same sidebar ... -->
         <div class="sidebar-brand"><i class="fas fa-pills"></i><span>Drugs n' More</span></div>
         <nav class="sidebar-nav">
             <div class="nav-label">Main</div>
@@ -90,7 +89,7 @@
         </div>
     </div>
 
-    <!-- LOGIN OVERLAY (hidden by default) -->
+    <!-- LOGIN OVERLAY -->
     <div class="login-page" id="loginPage" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4f7fa;">
         <div class="login-box">
             <div class="brand"><i class="fas fa-pills"></i>Drugs n' More</div>
@@ -103,13 +102,10 @@
         </div>
     </div>
 
-    <!-- MODAL for Add User -->
+    <!-- ADD USER MODAL -->
     <div class="modal-overlay" id="addModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999;">
         <div class="modal" style="background:#fff;border-radius:14px;max-width:640px;width:94%;max-height:90vh;overflow-y:auto;padding:28px 32px;">
-            <div class="modal-header">
-                <h3>Add User</h3>
-                <button class="close" id="addModalClose">&times;</button>
-            </div>
+            <div class="modal-header"><h3>Add User</h3><button class="close" id="addModalClose">&times;</button></div>
             <div id="addModalBody">
                 <div class="form-group"><label>Email</label><input id="newUserEmail" type="email" placeholder="user@example.com" /></div>
                 <div class="form-group"><label>Password</label><input id="newUserPass" type="password" placeholder="••••••••" /></div>
@@ -118,6 +114,7 @@
                         <option value="user">User</option>
                         <option value="supervisor">Supervisor</option>
                         <option value="manager">Manager</option>
+                        <option value="admin">Admin</option>
                     </select>
                 </div>
                 <div class="form-group" style="margin-top:16px;border-top:1px solid #eef1f5;padding-top:16px;">
@@ -130,13 +127,10 @@
         </div>
     </div>
 
-    <!-- MODAL for Edit User -->
+    <!-- EDIT USER MODAL -->
     <div class="modal-overlay" id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999;">
         <div class="modal" style="background:#fff;border-radius:14px;max-width:640px;width:94%;max-height:90vh;overflow-y:auto;padding:28px 32px;">
-            <div class="modal-header">
-                <h3>Edit User</h3>
-                <button class="close" id="editModalClose">&times;</button>
-            </div>
+            <div class="modal-header"><h3>Edit User</h3><button class="close" id="editModalClose">&times;</button></div>
             <div id="editModalBody">
                 <div class="form-group"><label>Email</label><input id="editUserEmail" type="email" disabled style="background:#f8fafc;" /></div>
                 <div class="form-group"><label>Display Name</label><input id="editDisplayName" placeholder="User display name" /></div>
@@ -145,6 +139,7 @@
                         <option value="user">User</option>
                         <option value="supervisor">Supervisor</option>
                         <option value="manager">Manager</option>
+                        <option value="admin">Admin</option>
                     </select>
                 </div>
                 <button class="btn btn-primary" id="saveEditBtn"><i class="fas fa-save"></i> Update User</button>
@@ -172,13 +167,21 @@
                 return 'user';
             }
 
-            // ----- Helper to safely call permission functions from window -----
-            function safeCall(fn, ...args) {
-                if (typeof window[fn] === 'function') {
-                    return window[fn](...args);
+            // ----- Permission helpers with fallback -----
+            function getPermHelper(name) {
+                if (window.Permissions && typeof window.Permissions[name] === 'function') {
+                    return window.Permissions[name];
                 }
-                console.warn('Function ' + fn + ' not found, using fallback');
-                return false;
+                if (typeof window[name] === 'function') {
+                    return window[name];
+                }
+                console.warn('Permission helper not found: ' + name + ', using fallback');
+                return function() { return false; };
+            }
+
+            function safeCall(name, ...args) {
+                const fn = getPermHelper(name);
+                return fn(...args);
             }
 
             // ----- Add User Modal -----
@@ -308,10 +311,10 @@
 
                     const currentRole = getCurrentRole();
                     let visibleRoles = [];
-                    if (typeof window.getVisibleRoles === 'function') {
-                        visibleRoles = window.getVisibleRoles(currentRole);
-                    } else {
-                        // Fallback: only show same role
+                    try {
+                        visibleRoles = safeCall('getVisibleRoles', currentRole);
+                    } catch (e) {
+                        console.warn('getVisibleRoles fallback:', e);
                         visibleRoles = [currentRole];
                     }
 
