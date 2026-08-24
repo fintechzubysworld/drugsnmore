@@ -9,17 +9,70 @@ const firebaseConfig = {
     measurementId: "G-HV3GYSY6CK"
 };
 
-// Check if Firebase is already initialized (avoids duplicate init errors)
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// ----- ROLE CONSTANTS -----
+const ROLES = {
+    SYSTEMS_ADMIN: 'systems_administrator',
+    MANAGER: 'manager',
+    SUPERVISOR: 'supervisor',
+    ADMIN: 'admin',        // legacy
+    USER: 'user'
+};
+
+// ----- PERMISSION HELPERS -----
+function isSystemsAdmin(role) {
+    return role === ROLES.SYSTEMS_ADMIN || role === 'superadmin'; // backward compatibility
+}
+
+function isAdmin(role) {
+    return role === ROLES.SYSTEMS_ADMIN || role === ROLES.MANAGER || role === ROLES.ADMIN || role === 'superadmin';
+}
+
+function isManager(role) {
+    return role === ROLES.MANAGER || role === ROLES.ADMIN || role === 'superadmin';
+}
+
+function isSupervisor(role) {
+    return role === ROLES.SUPERVISOR;
+}
+
+function canManageUsers(role) {
+    return isAdmin(role) || isSystemsAdmin(role) || isManager(role);
+}
+
+function canCreateUsers(role) {
+    return isAdmin(role) || isSystemsAdmin(role) || isManager(role);
+}
+
+function canDeleteUsers(role) {
+    return isAdmin(role) || isSystemsAdmin(role) || isManager(role);
+}
+
+function canEditUsers(role) {
+    return isAdmin(role) || isSystemsAdmin(role) || isManager(role);
+}
+
+function canResetPasswords(role) {
+    return isAdmin(role) || isSystemsAdmin(role) || isManager(role) || isSupervisor(role);
+}
+
+function canAccessSystemConfig(role) {
+    return isSystemsAdmin(role);
+}
+
+function canAccessSuperAdmin(role) {
+    return isSystemsAdmin(role);
+}
+
 // ----- GLOBAL STATE -----
 let currentUser = null;
 let currentUserRole = 'user';
-let currentCurrency = '$'; // default symbol
+let currentCurrency = '$';
 
 // ----- DOM HELPERS -----
 const $ = id => document.getElementById(id);
@@ -85,10 +138,10 @@ function getCurrency() {
     return currentCurrency;
 }
 
-// ----- SEED ADMIN (creates super admin if no users exist) -----
+// ----- SEED ADMIN (creates systems_administrator if no users exist) -----
 async function seedAdmin() {
-    const adminEmail = 'superadmin@drugsnmore.com';
-    const adminPass = 'superadmin123';
+    const adminEmail = 'systemsadmin@drugsnmore.com';
+    const adminPass = 'systemsadmin123';
     
     try {
         // Check if any user exists in Firestore
@@ -98,22 +151,20 @@ async function seedAdmin() {
             return;
         }
         
-        // No users found – create the super admin
-        console.log('🔨 Creating super admin...');
+        console.log('🔨 Creating systems administrator...');
         const cred = await auth.createUserWithEmailAndPassword(adminEmail, adminPass);
-        await cred.user.updateProfile({ displayName: 'Super Admin' });
+        await cred.user.updateProfile({ displayName: 'Systems Administrator' });
         await db.collection('users').doc(cred.user.uid).set({
             email: adminEmail,
-            role: 'superadmin',
-            displayName: 'Super Admin',
+            role: ROLES.SYSTEMS_ADMIN,
+            displayName: 'Systems Administrator',
             branch: 'Headquarters',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        // Set default currency in config
         await db.collection('config').doc('system').set({
             currency: '$'
         }, { merge: true });
-        console.log('✅ Super admin created successfully');
+        console.log('✅ Systems administrator created successfully');
         await auth.signOut();
     } catch (e) {
         console.warn('Seed admin error:', e.message);
@@ -129,44 +180,44 @@ function initAuth(callback) {
             if (displayEl) displayEl.textContent = user.displayName || user.email || 'User';
             showApp();
             
-            // Load currency
             await loadCurrency();
             
-            // Fetch or create user role
             try {
                 const doc = await db.collection('users').doc(user.uid).get();
                 if (doc.exists) {
-                    currentUserRole = doc.data().role || 'user';
+                    currentUserRole = doc.data().role || ROLES.USER;
                 } else {
-                    // Create user document if missing
                     await db.collection('users').doc(user.uid).set({
                         email: user.email,
-                        role: 'user',
+                        role: ROLES.USER,
                         displayName: user.displayName || user.email,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    currentUserRole = 'user';
+                    currentUserRole = ROLES.USER;
                 }
             } catch (e) {
                 console.warn('Role fetch error:', e);
-                currentUserRole = 'user';
+                currentUserRole = ROLES.USER;
             }
             
-            // Show/hide super admin and admin links
-            const isSuper = currentUserRole === 'superadmin';
-            const isAdmin = currentUserRole === 'admin' || isSuper;
+            // Show/hide admin links based on role
+            const canAccessSysConfig = canAccessSystemConfig(currentUserRole);
+            const canAccessSuperAdmin = canAccessSuperAdmin(currentUserRole);
+            const canAccessAdminPages = isAdmin(currentUserRole) || isSystemsAdmin(currentUserRole) || isManager(currentUserRole);
+            
             document.querySelectorAll('.sidebar-nav a[href="super-admin.html"]')
-                .forEach(el => el.style.display = isSuper ? 'flex' : 'none');
+                .forEach(el => el.style.display = canAccessSuperAdmin ? 'flex' : 'none');
             document.querySelectorAll('.sidebar-nav a[href="system-configurations.html"]')
-                .forEach(el => el.style.display = isSuper ? 'flex' : 'none');
+                .forEach(el => el.style.display = canAccessSysConfig ? 'flex' : 'none');
+            document.querySelectorAll('.sidebar-nav a[href="admin.html"]')
+                .forEach(el => el.style.display = canAccessAdminPages ? 'flex' : 'none');
             
             loadNotificationCount();
             if (callback) callback(user);
         } else {
             currentUser = null;
-            currentUserRole = 'user';
+            currentUserRole = ROLES.USER;
             showLogin();
-            // Only seed admin when no user is logged in
             seedAdmin();
         }
     });
@@ -253,7 +304,6 @@ function attachLoginHandlers() {
         });
     }
 
-    // Menu toggle for mobile
     const menuToggle = document.getElementById('menuToggle');
     if (menuToggle) {
         menuToggle.addEventListener('click', () => {
@@ -261,7 +311,6 @@ function attachLoginHandlers() {
         });
     }
 
-    // Notification icon
     const notifIcon = document.getElementById('notifIcon');
     if (notifIcon) {
         notifIcon.addEventListener('click', () => {
@@ -283,3 +332,17 @@ window.loadCurrency = loadCurrency;
 window.formatCurrency = formatCurrency;
 window.getCurrency = getCurrency;
 window.currentCurrency = () => currentCurrency;
+
+// Expose role helpers
+window.ROLES = ROLES;
+window.isSystemsAdmin = isSystemsAdmin;
+window.isAdmin = isAdmin;
+window.isManager = isManager;
+window.isSupervisor = isSupervisor;
+window.canManageUsers = canManageUsers;
+window.canCreateUsers = canCreateUsers;
+window.canDeleteUsers = canDeleteUsers;
+window.canEditUsers = canEditUsers;
+window.canResetPasswords = canResetPasswords;
+window.canAccessSystemConfig = canAccessSystemConfig;
+window.canAccessSuperAdmin = canAccessSuperAdmin;
